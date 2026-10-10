@@ -6,10 +6,17 @@
   "scripts": {
     "test": "TZ=America/Chicago vitest run && TZ=Asia/Tokyo vitest run",
     "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && npm test"
+    "check": "tsc --noEmit && npm test",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
+    "vite": "^6.4.4",
     "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
   }
 }

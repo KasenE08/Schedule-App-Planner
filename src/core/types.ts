@@ -118,6 +118,8 @@ export interface Task {
   due: Ms | null;
   /** Padded estimate the scheduler plans with. */
   estimateMin: number;
+  /** True when the user typed the estimate instead of using the automatic one. */
+  estimateManual?: boolean;
   notes?: string;
   status: TaskStatus;
   startedAt?: Ms;

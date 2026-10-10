@@ -45,9 +45,20 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - **Learning:** Start/Done taps in the app record real durations to adjust estimates per type.
 - Reminders sync via the Shortcut, check-off, notes, backups, dark UI.
 
+## App behavior
+- The plan is **saved**, not recalculated live. It is recalculated when a task is added, edited, deleted, started or reopened, when the arrival time or any setting changes, and automatically on the first open of a new day. Done and notes never move anything (finishing early = free time).
+- Data is stored in localStorage on the phone. Backups are JSON files (`app: "schedule-app-planner"`) and can be exported and imported in Settings.
+- Offline: `vite.config.ts` writes `sw.js`, which precaches every built file.
+
 ## Layout
 - `src/core/` holds the pure scheduling logic with no UI: types, time, recurrence, availability, priority, estimate, scheduler, defaults.
+- `src/app/` holds the Preact UI: `model.ts` (pure app state and actions, tested), `store.ts` (persistence), and the screens (Today, TaskList, Settings, TaskForm, TaskDetail, BlockForm).
 - `test/` holds the Vitest suites; `fixtures.ts` is a sample week with generic place names.
+- `.github/workflows/deploy.yml`: every push to `dev` runs the checks, builds, and publishes `dist/` to the `gh-pages` branch. Pages serves `gh-pages`.
+- `scripts/make-icons.mjs` generates the app icons.
+
+## Commands
+`npm run check` (typecheck + tests) · `npm run dev` · `npm run build`
 
 ## Progress log
 ### Phase 1: Scheduler core (done)
@@ -60,3 +71,10 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - Added the get-ready hour and no-tasks-before-school (Mon–Thu) rules. Other tasks now skip only the after-school hour.
 - Laundry is non-blocking. Missing work yields to dated work when it would cause lateness.
 - 46 tests passing.
+
+### Phase 2: App and install (done)
+- Dark mobile UI: day timeline with a week strip, the arrival-time input, overload banner, task list, task detail (Start/Done/notes), and the add/edit assignment form with automatic estimates.
+- Settings: fixed schedule and one-time events (once, daily, weekly, monthly by date or by pattern, skip dates, non-blocking, step reminders), places and travel, cutoff rules, pacing limits, backup export and import.
+- PWA: manifest, icons, offline service worker. GitHub Actions deploys `dev` to `gh-pages`.
+- The starter backup with the user's real schedule was handed over outside the repo.
+- 53 tests passing. Smoke-tested in headless Chromium at iPhone size, including offline reload.
