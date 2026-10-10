@@ -6,7 +6,7 @@ A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignment
 - Ask questions and show a plan before writing code. Build in phases; confirm with the user before each phase.
 - Every scheduler rule has a unit test. Run `npm run check` (typecheck + tests in two timezones) after every change.
 - Update the progress log below at the end of each phase, and give the user a plain-language summary.
-- Develop on the `dev` branch. `main` deploys to GitHub Pages; merge only after the user reviews.
+- Develop on the `dev` branch. GitHub Pages hosts from `dev` while building; switch to `main` after the user signs off.
 - The repo is public: never commit the user's personal data (real place names, their schedule). Personal data lives only on the phone and in backup files.
 - The user is on a limited plan: keep work token-efficient.
 - Commit messages end with: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
@@ -17,15 +17,17 @@ A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignment
 **Travel:** each location has a travel time from Home and back to Home. A block occupies `[start − travel there, end + travel back]`. Trips always start and end at Home.
 
 **Cutoffs** (editable, each scoped to schoolwork only or to all tasks):
-- No schoolwork within 60 min of arriving home from school. Arrival = the arrival-time input for that day, else school end + travel back.
-- No schoolwork within 60 min before a work shift, counted from shift start.
-- No schoolwork within 30 min after a workout.
-- No schoolwork on weekends before 12pm.
-- No task after 12am (day end). No task before the earliest start (default 8:00am).
-- Other tasks (errands like groceries or gas) bypass the four schoolwork cutoffs but never overlap fixed blocks.
+- No schoolwork within 60 min of arriving home from school. Arrival = the arrival-time input for that day, else school end + travel back. **This is the only cutoff Other tasks (errands like groceries or gas) skip.**
+- No tasks before school Mon–Thu (whole morning, from that day's midnight).
+- Get ready: no tasks within 60 min before leaving for school, so Friday tasks end by 9:28.
+- No tasks within 60 min before a work shift, counted from shift start.
+- No tasks within 30 min after a workout.
+- No tasks on weekends before 12pm.
+- No task after 12am (day end) or before the earliest start (8:00am).
 
-**Priority:** due date first (missing work = as soon as possible, so it comes before any dated task), category breaks ties:
+**Priority:** due date first, category breaks ties:
 Online-Normal → Online-Missing → Paper-Normal → Paper-Missing → Other. A task in several categories takes its highest.
+Missing work has no due date and goes as soon as possible, **unless doing it first would make a dated assignment late**; then the normal assignment goes first.
 
 **Placement:** tasks go in time order from now, starting at the next 5-minute mark. The top-priority task takes its earliest fitting slot. A lower-priority task may fill an earlier gap only if that never delays the top task. A task never crosses a cutoff or block.
 
@@ -35,7 +37,7 @@ Online-Normal → Online-Missing → Paper-Normal → Paper-Missing → Other. A
 
 **Overload warnings:** a task that can only finish after its due date is still scheduled but flagged late. A task that fits nowhere in the 28-day window is flagged unscheduled.
 
-**Laundry** (Sunday 3:30pm, 2 hours, blocks scheduling): reminders at +0 (washer), +60 (dryer), +120 (take out).
+**Laundry** (Sunday 3:30pm, 2 hours, non-blocking so homework may run during it): reminders at +0 (washer), +60 (dryer), +120 (take out).
 
 ### Coming in later phases
 - **Falling behind:** reschedule the rest of today starting exactly now + 5 min. Overflow moves to later today or the next day by priority. Past 12am only if needed to meet deadlines, hard stop at 2am.
@@ -53,3 +55,8 @@ Online-Normal → Online-Missing → Paper-Normal → Paper-Missing → Other. A
 - Free-time calculation with travel, cutoffs, an arrival override and DST-safe local times.
 - Priority ordering, the placement algorithm with breaks and short-task pairing, gap filling, late and unscheduled warnings, laundry step reminders, and time estimates.
 - 41 tests, passing in America/Chicago and Asia/Tokyo.
+
+### Phase 1 revisions (done)
+- Added the get-ready hour and no-tasks-before-school (Mon–Thu) rules. Other tasks now skip only the after-school hour.
+- Laundry is non-blocking. Missing work yields to dated work when it would cause lateness.
+- 46 tests passing.

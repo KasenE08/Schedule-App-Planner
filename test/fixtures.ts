@@ -32,7 +32,7 @@ export const BLOCKS: FixedBlock[] = [
   { id: 'work-sat', title: 'Work', tag: 'work', locationId: 'work', startMin: hm(17), endMin: hm(23), recurrence: weekly(6) },
   { id: 'work-sun', title: 'Work', tag: 'work', locationId: 'work', startMin: hm(10, 30), endMin: hm(15), recurrence: weekly(0) },
   {
-    id: 'laundry', title: 'Laundry', tag: 'chore', locationId: 'home', startMin: hm(15, 30), endMin: hm(17, 30), recurrence: weekly(0),
+    id: 'laundry', title: 'Laundry', tag: 'chore', locationId: 'home', startMin: hm(15, 30), endMin: hm(17, 30), recurrence: weekly(0), blocksScheduling: false,
     steps: [
       { offsetMin: 0, title: 'Put laundry in washer' },
       { offsetMin: 60, title: 'Move laundry to dryer' },

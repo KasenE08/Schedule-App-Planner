@@ -20,27 +20,35 @@ function earliestFit(free: Interval[], from: Ms, dur: Ms, gridMin: number): Ms |
   return null;
 }
 
+interface State {
+  prev: Prev | null;
+  floor: Ms;
+}
+
+interface Run {
+  items: ScheduledItem[];
+  warnings: Warning[];
+}
+
 /**
  * Places every unfinished task into free time, in priority order (due date, then category).
  * A lower-priority task may fill a gap first only if doing so never delays the top task.
+ * Missing work goes as soon as possible unless that would make a dated task late.
  * Tasks are placed in time order, so breaks are always measured from the previous task.
  */
 export function schedule(input: ScheduleInput): ScheduleResult {
   const { now, settings: s } = input;
-  const today = dateKey(now);
-  const free = freeTime(input, today, s.horizonDays);
+  const free = freeTime(input, dateKey(now), s.horizonDays);
   const isShort = (t: Task) => t.estimateMin <= s.shortTaskMaxMin;
 
-  const items: ScheduledItem[] = [];
-  const warnings: Warning[] = [];
-  let prev: Prev | null = null;
-  let floor = now;
+  const fixed: ScheduledItem[] = [];
+  let state: State = { prev: null, floor: now };
 
   // A task already started holds its slot; it is the previous task for break purposes.
   for (const t of input.tasks.filter((t) => t.status === 'inProgress' && t.startedAt !== undefined)) {
     const end = Math.max(t.startedAt! + t.estimateMin * MIN, now + s.slotRoundMin * MIN);
-    items.push({ taskId: t.id, start: t.startedAt!, end, late: t.due !== null && end > t.due });
-    if (!prev || end > prev.end) prev = { end, short: isShort(t), paired: false };
+    fixed.push({ taskId: t.id, start: t.startedAt!, end, late: t.due !== null && end > t.due });
+    if (!state.prev || end > state.prev.end) state = { ...state, prev: { end, short: isShort(t), paired: false } };
     const busy = { start: t.startedAt!, end };
     free.all = free.all.flatMap((iv) => cut(iv, busy));
     free.schoolwork = free.schoolwork.flatMap((iv) => cut(iv, busy));
@@ -50,53 +58,72 @@ export function schedule(input: ScheduleInput): ScheduleResult {
     if (!p) return 0;
     return p.short && !p.paired && isShort(t) ? s.shortPairBreakMin : s.breakMin;
   };
-  const startFor = (t: Task, p: Prev | null) =>
+  const startFor = (t: Task, st: State) =>
     earliestFit(
       isSchoolwork(t) ? free.schoolwork : free.all,
-      Math.max(floor, p ? p.end + gap(p, t) * MIN : floor),
+      st.prev ? Math.max(st.floor, st.prev.end + gap(st.prev, t) * MIN) : st.floor,
       t.estimateMin * MIN,
       s.slotRoundMin,
     );
-  const place = (t: Task, start: Ms) => {
+  const after = (t: Task, start: Ms, st: State): State => {
     const end = start + t.estimateMin * MIN;
-    const late = t.due !== null && end > t.due;
-    items.push({ taskId: t.id, start, end, late });
-    if (late) warnings.push({ kind: 'late', taskId: t.id, due: t.due!, end });
-    prev = { end, short: isShort(t), paired: !!prev && gap(prev, t) === s.shortPairBreakMin && isShort(t) };
-    floor = end;
+    const paired = !!st.prev && isShort(t) && gap(st.prev, t) === s.shortPairBreakMin;
+    return { prev: { end, short: isShort(t), paired }, floor: end };
+  };
+  const lateIds = (r: Run) => new Set(r.items.filter((i) => i.late).map((i) => i.taskId));
+
+  /** Missing work may go first only if no dated task becomes late because of it. */
+  const pickTop = (queue: Task[], st: State): number => {
+    if (queue[0].due !== null) return 0;
+    const firstDated = queue.findIndex((t) => t.due !== null);
+    if (firstDated === -1) return 0;
+    const start = startFor(queue[0], st);
+    if (start === null) return 0;
+    const dated = queue.filter((t) => t.due !== null);
+    const before = lateIds(greedy(dated, st, false));
+    const withMissing = lateIds(greedy(dated, after(queue[0], start, st), false));
+    return [...withMissing].some((id) => !before.has(id)) ? firstDated : 0;
   };
 
-  const queue = input.tasks.filter((t) => t.status === 'todo').sort(comparePriority);
-  while (queue.length) {
-    const top = queue[0];
-    const topStart = startFor(top, prev);
-    if (topStart === null) {
-      warnings.push({ kind: 'unscheduled', taskId: top.id });
-      queue.shift();
-      continue;
-    }
-    let chosen = 0;
-    let chosenStart = topStart;
-    for (let i = 1; i < queue.length; i++) {
-      const c = queue[i];
-      const cs = startFor(c, prev);
-      if (cs === null) continue;
-      const after: Prev = {
-        end: cs + c.estimateMin * MIN,
-        short: isShort(c),
-        paired: !!prev && gap(prev, c) === s.shortPairBreakMin && isShort(c),
-      };
-      if (after.end + gap(after, top) * MIN <= topStart) {
-        chosen = i;
-        chosenStart = cs;
-        break;
+  function greedy(tasks: Task[], st: State, checkMissing: boolean): Run {
+    const items: ScheduledItem[] = [];
+    const warnings: Warning[] = [];
+    const queue = [...tasks];
+    while (queue.length) {
+      const topIdx = checkMissing ? pickTop(queue, st) : 0;
+      const top = queue[topIdx];
+      const topStart = startFor(top, st);
+      if (topStart === null) {
+        warnings.push({ kind: 'unscheduled', taskId: top.id });
+        queue.splice(topIdx, 1);
+        continue;
       }
+      let chosen = topIdx;
+      let chosenStart = topStart;
+      for (let i = 0; i < queue.length; i++) {
+        if (i === topIdx) continue;
+        const cs = startFor(queue[i], st);
+        if (cs === null) continue;
+        const next = after(queue[i], cs, st);
+        if (next.floor + gap(next.prev, top) * MIN <= topStart) {
+          chosen = i;
+          chosenStart = cs;
+          break;
+        }
+      }
+      const t = queue[chosen];
+      const end = chosenStart + t.estimateMin * MIN;
+      const late = t.due !== null && end > t.due;
+      items.push({ taskId: t.id, start: chosenStart, end, late });
+      if (late) warnings.push({ kind: 'late', taskId: t.id, due: t.due!, end });
+      st = after(t, chosenStart, st);
+      queue.splice(chosen, 1);
     }
-    place(queue[chosen], chosenStart);
-    queue.splice(chosen, 1);
+    return { items, warnings };
   }
 
-  return { items, blockReminders: blockReminders(input), warnings };
+  const run = greedy(input.tasks.filter((t) => t.status === 'todo').sort(comparePriority), state, true);
+  return { items: [...fixed, ...run.items], blockReminders: blockReminders(input), warnings: run.warnings };
 }
 
 function cut(iv: Interval, busy: Interval): Interval[] {

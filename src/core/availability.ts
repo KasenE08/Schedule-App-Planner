@@ -39,6 +39,9 @@ export function occurrencesOn(
     .sort((a, b) => a.start - b.start);
 }
 
+/** A beforeBlock rule this long covers the whole morning of that day only. */
+export const WHOLE_MORNING = 24 * 60;
+
 export type FreeTime = Record<TaskScope, Interval[]>;
 
 /**
@@ -69,8 +72,13 @@ export function freeTime(input: ScheduleInput, from: DateKey, days: number): Fre
       }
       for (const o of occ) {
         if (o.block.tag !== r.tag) continue;
-        if (r.kind === 'afterBlock') into.push({ start: o.arrive, end: o.arrive + r.minutes * MIN });
-        else into.push({ start: o.start - r.minutes * MIN, end: o.start });
+        if (r.kind === 'afterBlock') {
+          into.push({ start: o.arrive, end: o.arrive + r.minutes * MIN });
+        } else if (!r.weekdays || r.weekdays.includes(weekday(key))) {
+          const anchor = r.from === 'leave' ? o.leave : o.start;
+          const start = r.minutes >= WHOLE_MORNING ? at(key, 0) : anchor - r.minutes * MIN;
+          into.push({ start, end: anchor });
+        }
       }
     }
   }

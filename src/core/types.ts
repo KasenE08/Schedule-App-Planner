@@ -58,8 +58,19 @@ export type TaskScope = 'schoolwork' | 'all';
 export type CutoffRule =
   /** No tasks for `minutes` after arriving home from a block with this tag. */
   | { id: string; kind: 'afterBlock'; tag: BlockTag; minutes: number; appliesTo: TaskScope }
-  /** No tasks for `minutes` before a block with this tag starts. */
-  | { id: string; kind: 'beforeBlock'; tag: BlockTag; minutes: number; appliesTo: TaskScope }
+  /**
+   * No tasks for `minutes` before a block with this tag, counted from its start (default)
+   * or from when you leave home. Optional weekday filter. minutes ≥ 1440 = the whole morning.
+   */
+  | {
+      id: string;
+      kind: 'beforeBlock';
+      tag: BlockTag;
+      minutes: number;
+      appliesTo: TaskScope;
+      from?: 'start' | 'leave';
+      weekdays?: number[];
+    }
   /** No tasks inside this daily window on the given weekdays. */
   | { id: string; kind: 'window'; weekdays: number[]; startMin: number; endMin: number; appliesTo: TaskScope };
 
