@@ -52,8 +52,9 @@ export function ShortcutGuide() {
                   <li><b>Get Dictionary Value</b> key <C>remind</C> in Repeat Item, then <b>Set Variable</b> <C>Remind</C></li>
                   <li><b>Get Dictionary Value</b> key <C>notes</C> in Repeat Item, then <b>Set Variable</b> <C>Notes</C></li>
                   <li>
-                    <b>Add New Reminder</b>: title <C>Title</C>, list <b>Planner</b>. Turn on <b>Remind Me</b> / alert <b>At Time</b>, set to <C>Remind</C>.
-                    Tap <b>Show More</b> and set Notes to <C>Notes</C>.
+                    <b>New Reminder</b> (called <b>Add New Reminder</b> on older iOS): title <C>Title</C>, list <b>Planner</b>.
+                    Set the reminder's date/time (<b>Due Date</b>, or <b>Remind Me → At Time</b>) to <C>Remind</C>. If there is also an
+                    alert option, set it to alert at that time. Tap the arrow / <b>Show More</b> and set Notes to <C>Notes</C>.
                   </li>
                 </ul>
               </li>
