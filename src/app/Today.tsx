@@ -5,6 +5,8 @@ import { occurrencesOn } from '../core/availability';
 import type { AppData } from './model';
 import { actions } from './model';
 import { commit } from './store';
+import { isOutOfDate } from './sync';
+import { pasteCheckoffs, sendToReminders } from './syncFlow';
 import { useUI } from './ui';
 import { category, fmtDay, fmtDue, fmtDur, fmtTime, inputToMin, minToInput, TAG_LABELS } from './format';
 
@@ -67,10 +69,23 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
           <h1>{day === today ? 'Today' : fmtDay(day, { weekday: 'long' })}</h1>
           <div class="muted">{fmtDay(day, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
         </div>
-        <button class="btn small" onClick={() => ui.open({ kind: 'block', once: true })}>
-          + Event
-        </button>
+        <div class="row">
+          <button class="btn small" onClick={() => ui.open({ kind: 'block', once: true })}>
+            + Event
+          </button>
+          <button class={`btn small ${isOutOfDate(data, now) ? 'attention' : ''}`} onClick={sendToReminders}>
+            {isOutOfDate(data, now) ? 'Sync •' : 'Synced'}
+          </button>
+        </div>
       </header>
+
+      {data.sync.pending && (
+        <div class="card row sync-banner">
+          <span class="grow">Back from Shortcuts? Bring in what you checked off in Reminders.</span>
+          <button class="btn small primary" onClick={pasteCheckoffs}>Paste check-offs</button>
+          <button class="link small" aria-label="Dismiss" onClick={() => commit((d) => ({ ...d, sync: { ...d.sync, pending: false } }))}>✕</button>
+        </div>
+      )}
 
       <div class="week">
         <button class="link" aria-label="Previous week" disabled={weekOffset === 0} onClick={() => setWeekOffset(weekOffset - 1)}>

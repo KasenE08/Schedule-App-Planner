@@ -43,12 +43,18 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - **Falling behind:** reschedule the rest of today starting exactly now + 5 min. Overflow moves to later today or the next day by priority. Past 12am only if needed to meet deadlines, hard stop at 2am.
 - **Big tasks** (> 90 min): split into chunks across days, after asking the user.
 - **Learning:** Start/Done taps in the app record real durations to adjust estimates per type.
-- Reminders sync via the Shortcut, check-off, notes, backups, dark UI.
 
 ## App behavior
 - The plan is **saved**, not recalculated live. It is recalculated when a task is added, edited, deleted, started or reopened, when the arrival time or any setting changes, and automatically on the first open of a new day. Done and notes never move anything (finishing early = free time).
 - Data is stored in localStorage on the phone. Backups are JSON files (`app: "schedule-app-planner"`) and can be exported and imported in Settings.
 - Offline: `vite.config.ts` writes `sw.js`, which precaches every built file.
+
+## Reminders sync (Shortcut "Planner Sync")
+- **Sync** copies a JSON payload `{app, items:[{id,title,remind,notes}]}` to the clipboard and opens `shortcuts://run-shortcut?name=Planner%20Sync`.
+- Items cover unfinished planned tasks and block step reminders from the start of today through `syncDays` (default 7). Title = task + real due date. `remind` = scheduled start, in en-US long form so Shortcuts parses it. Notes end with `[planner:<id>]`. Step ids are `step-<blockId>-<ms>`, unique per occurrence.
+- The Shortcut collects the ids of completed reminders in Planner, deletes everything in Planner, re-adds the items not completed, and copies `planner-sync-done:<id>,<id>` to the clipboard.
+- Back in the app, **Paste check-offs** marks those tasks done (no replan). Step ids are ignored.
+- "Out of date" = the current payload differs from the last one sent (adjusted for the check-offs). The step-by-step build guide lives in the app: Settings → Reminders sync.
 
 ## Layout
 - `src/core/` holds the pure scheduling logic with no UI: types, time, recurrence, availability, priority, estimate, scheduler, defaults.
@@ -78,3 +84,7 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - PWA: manifest, icons, offline service worker. GitHub Actions deploys `dev` to `gh-pages`.
 - The starter backup with the user's real schedule was handed over outside the repo.
 - 53 tests passing. Smoke-tested in headless Chromium at iPhone size, including offline reload.
+
+### Phase 3: Reminders sync (done)
+- Sync button (with a dot when out of date), clipboard payload, Shortcut launch, Paste check-offs banner, and the in-app Shortcut setup guide.
+- 62 tests passing. Browser smoke test of the full send and paste-back flow. The Shortcut itself can only be tested on the iPhone.

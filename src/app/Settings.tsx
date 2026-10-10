@@ -53,6 +53,26 @@ export function Settings({ data }: { data: AppData }) {
       <Locations data={data} />
       <Rules data={data} />
       <General settings={data.settings} />
+      <section>
+        <h3>Reminders sync</h3>
+        <div class="card">
+          <label class="set-row">
+            <span>Days to put in Reminders</span>
+            <span>
+              <input type="number" inputMode="numeric" value={data.settings.syncDays} onChange={(e) => {
+                const v = Math.min(28, Math.max(1, Number(e.currentTarget.value) || 7));
+                commit((d) => ({ ...d, settings: { ...d.settings, syncDays: v } }));
+              }} /> days
+            </span>
+          </label>
+          <p class="muted small">
+            Last sync: {data.sync.at ? new Date(data.sync.at).toLocaleString() : 'never'}. Syncing replaces everything in your
+            "Planner" list, so keep that list for the app only.
+          </p>
+          <button class="btn" onClick={() => ui.open({ kind: 'guide' })}>Shortcut setup guide</button>
+        </div>
+      </section>
+
       <Backup data={data} />
 
       <p class="muted small center">

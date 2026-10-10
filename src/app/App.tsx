@@ -7,6 +7,7 @@ import { Settings } from './Settings';
 import { TaskForm } from './TaskForm';
 import { TaskDetail } from './TaskDetail';
 import { BlockForm } from './BlockForm';
+import { ShortcutGuide } from './ShortcutGuide';
 
 type Tab = 'today' | 'tasks' | 'settings';
 const TABS: { id: Tab; label: string }[] = [
@@ -44,6 +45,7 @@ export function App() {
       {sheet?.kind === 'task' && <TaskForm data={data} task={sheet.task} />}
       {sheet?.kind === 'detail' && <TaskDetail data={data} id={sheet.id} />}
       {sheet?.kind === 'block' && <BlockForm data={data} block={sheet.block} once={sheet.once} />}
+      {sheet?.kind === 'guide' && <ShortcutGuide />}
     </UI.Provider>
   );
 }

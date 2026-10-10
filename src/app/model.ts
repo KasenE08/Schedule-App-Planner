@@ -23,6 +23,15 @@ export interface AppData {
   arrivals: Record<DateKey, number>;
   /** The saved plan. It only changes when something is added, edited or started, so times stay put. */
   plan: Plan | null;
+  sync: SyncState;
+}
+
+export interface SyncState {
+  /** The payload last sent to Reminders; differs from the current one when Reminders is out of date. */
+  payload: string | null;
+  at: Ms | null;
+  /** Sent to the Shortcut, waiting for its check-offs to be pasted back. */
+  pending: boolean;
 }
 
 export function emptyData(): AppData {
@@ -35,6 +44,7 @@ export function emptyData(): AppData {
     settings: DEFAULT_SETTINGS,
     arrivals: {},
     plan: null,
+    sync: { payload: null, at: null, pending: false },
   };
 }
 
@@ -49,6 +59,7 @@ export function normalize(raw: Partial<AppData>): AppData {
     locations: raw.locations?.some((l) => l.id === HOME.id) ? raw.locations : [HOME, ...(raw.locations ?? [])],
     arrivals: raw.arrivals ?? {},
     plan: raw.plan ?? null,
+    sync: raw.sync ?? base.sync,
   };
 }
 

@@ -87,6 +87,8 @@ export interface Settings {
   horizonDays: number;
   /** Start times snap up to this grid. */
   slotRoundMin: number;
+  /** How many days ahead to put into Reminders. */
+  syncDays: number;
 }
 
 export type Format = 'online' | 'paper';

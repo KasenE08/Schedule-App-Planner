@@ -157,3 +157,11 @@ textarea { resize: vertical; }
 .set-row input { width: 84px; }
 .set-row input[type='time'] { width: 136px; }
 .section-head select.link { width: auto; min-height: 0; border: 0; background: none; padding: 4px; color: var(--accent); -webkit-appearance: none; appearance: none; }
+.btn.attention { border-color: var(--accent); color: var(--accent); }
+.grow { flex: 1; }
+.sync-banner { font-size: 13px; }
+.guide ol { padding-left: 20px; margin: 8px 0 16px; }
+.guide li { margin-bottom: 10px; }
+.guide code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: 13px; overflow-wrap: anywhere; }
+.guide .sub { list-style: disc; padding-left: 18px; margin: 6px 0 0; }
+.guide h3 { margin-top: 18px; }

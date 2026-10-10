@@ -5,7 +5,8 @@ import type { FixedBlock, Task } from '../core/types';
 export type Sheet =
   | { kind: 'task'; task?: Task }
   | { kind: 'detail'; id: string }
-  | { kind: 'block'; block?: FixedBlock; once?: boolean };
+  | { kind: 'block'; block?: FixedBlock; once?: boolean }
+  | { kind: 'guide' };
 
 export const UI = createContext<{ open: (s: Sheet) => void; close: () => void }>({ open: () => {}, close: () => {} });
 export const useUI = () => useContext(UI);

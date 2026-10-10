@@ -28,6 +28,8 @@ function save() {
 }
 save();
 
+export const getData = () => state;
+
 export function commit(fn: (d: AppData, now: Ms) => AppData) {
   const next = fn(state, Date.now());
   if (next === state) return;
