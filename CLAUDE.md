@@ -95,4 +95,4 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 ### Phase 3b: Standalone notifications (done)
 - At the user's request the Reminders/Shortcut sync was removed completely and replaced with Web Push from a free Cloudflare Worker.
 - Phone-side encryption, server (Durable Object + alarm), Settings → Notifications (turn on, test, days ahead, turn off), setup guide, notification tap opens the task, and the worker deploy workflow.
-- 74 tests passing (including the RFC 8291 vector and server tests). Worker bundled with `wrangler --dry-run` and run locally in workerd, which caught an "Illegal invocation" bug with the global fetch (fixed). Real delivery can only be tested on the iPhone after the user deploys.
+- 74 tests passing (including the RFC 8291 vector and server tests). Worker bundled with `wrangler --dry-run` and run locally in workerd, which caught an "Illegal invocation" bug with the global fetch (fixed). Deployed by the user to `planner-push.<subdomain>.workers.dev`; the test notification was confirmed arriving on the iPhone.
