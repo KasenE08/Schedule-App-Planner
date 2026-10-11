@@ -1,0 +1,15 @@
+name = "planner-push"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[vars]
+VAPID_SUBJECT = "https://kasene08.github.io/Schedule-App-Planner/"
+
+[[durable_objects.bindings]]
+name = "PUSH"
+class_name = "PushHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PushHub"]

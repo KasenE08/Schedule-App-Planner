@@ -31,6 +31,25 @@ self.addEventListener('fetch', (e) => {
   }
   e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
 });
+self.addEventListener('push', (e) => {
+  let n = {};
+  try { n = e.data ? e.data.json() : {}; } catch {}
+  e.waitUntil(self.registration.showNotification(n.title || 'Planner', {
+    body: n.body || '', tag: n.tag, icon: './icon-192.png', data: { taskId: n.taskId },
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const taskId = e.notification.data && e.notification.data.taskId;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const open = list[0];
+    if (open) {
+      if (taskId) open.postMessage({ type: 'open-task', taskId });
+      return open.focus();
+    }
+    return self.clients.openWindow(taskId ? './#task=' + encodeURIComponent(taskId) : './');
+  }));
+});
 `,
       });
     },

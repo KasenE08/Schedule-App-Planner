@@ -7,7 +7,8 @@ import { Settings } from './Settings';
 import { TaskForm } from './TaskForm';
 import { TaskDetail } from './TaskDetail';
 import { BlockForm } from './BlockForm';
-import { ShortcutGuide } from './ShortcutGuide';
+import { NotifyGuide } from './NotifyGuide';
+import { useEffect } from 'preact/hooks';
 
 type Tab = 'today' | 'tasks' | 'settings';
 const TABS: { id: Tab; label: string }[] = [
@@ -22,6 +23,19 @@ export function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const ui = { open: setSheet, close: () => setSheet(null) };
+
+  // Tapping a notification opens its task: via the URL when the app was closed, via a message when open.
+  useEffect(() => {
+    const openTask = (id: string | null | undefined) => id && data.tasks.some((t) => t.id === id) && setSheet({ kind: 'detail', id });
+    const m = location.hash.match(/^#task=(.+)$/);
+    if (m) {
+      openTask(decodeURIComponent(m[1]));
+      history.replaceState(null, '', location.pathname);
+    }
+    const onMsg = (e: MessageEvent) => e.data?.type === 'open-task' && openTask(e.data.taskId);
+    navigator.serviceWorker?.addEventListener('message', onMsg);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg);
+  }, []);
 
   return (
     <UI.Provider value={ui}>
@@ -45,7 +59,7 @@ export function App() {
       {sheet?.kind === 'task' && <TaskForm data={data} task={sheet.task} />}
       {sheet?.kind === 'detail' && <TaskDetail data={data} id={sheet.id} />}
       {sheet?.kind === 'block' && <BlockForm data={data} block={sheet.block} once={sheet.once} />}
-      {sheet?.kind === 'guide' && <ShortcutGuide />}
+      {sheet?.kind === 'notifyGuide' && <NotifyGuide />}
     </UI.Provider>
   );
 }

@@ -6,7 +6,7 @@ export type Sheet =
   | { kind: 'task'; task?: Task }
   | { kind: 'detail'; id: string }
   | { kind: 'block'; block?: FixedBlock; once?: boolean }
-  | { kind: 'guide' };
+  | { kind: 'notifyGuide' };
 
 export const UI = createContext<{ open: (s: Sheet) => void; close: () => void }>({ open: () => {}, close: () => {} });
 export const useUI = () => useContext(UI);

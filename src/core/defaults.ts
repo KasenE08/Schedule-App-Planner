@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
   paddingPct: 15,
   horizonDays: 28,
   slotRoundMin: 5,
-  syncDays: 7,
+  notifyDays: 7,
 };
 
 /** Generic starting rules; every value is editable in Settings. Other tasks bypass only the after-school hour. */

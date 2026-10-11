@@ -38,6 +38,11 @@ export function commit(fn: (d: AppData, now: Ms) => AppData) {
   subs.forEach((f) => f());
 }
 
+/** Runs after every saved change. */
+export function onChange(fn: () => void) {
+  subs.add(fn);
+}
+
 export function useData(): AppData {
   const [, force] = useState(0);
   useEffect(() => {

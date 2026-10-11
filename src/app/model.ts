@@ -23,15 +23,22 @@ export interface AppData {
   arrivals: Record<DateKey, number>;
   /** The saved plan. It only changes when something is added, edited or started, so times stay put. */
   plan: Plan | null;
-  sync: SyncState;
+  /** Notification setup for this phone; null when notifications are off. Never exported in backups. */
+  push: PushState | null;
 }
 
-export interface SyncState {
-  /** The payload last sent to Reminders; differs from the current one when Reminders is out of date. */
-  payload: string | null;
-  at: Ms | null;
-  /** Sent to the Shortcut, waiting for its check-offs to be pasted back. */
-  pending: boolean;
+export interface PushState {
+  /** Notification server URL, e.g. https://planner-push.name.workers.dev */
+  url: string;
+  deviceId: string;
+  secret: string;
+  /** This phone's push subscription keys, used to encrypt notifications before upload. */
+  p256dh: string;
+  auth: string;
+  /** Fingerprint of the notifications last uploaded; differs when the server needs an update. */
+  uploaded: string | null;
+  uploadedAt: Ms | null;
+  error: string | null;
 }
 
 export function emptyData(): AppData {
@@ -44,22 +51,23 @@ export function emptyData(): AppData {
     settings: DEFAULT_SETTINGS,
     arrivals: {},
     plan: null,
-    sync: { payload: null, at: null, pending: false },
+    push: null,
   };
 }
 
 /** Fills in anything missing from older saves or hand-edited backups. */
 export function normalize(raw: Partial<AppData>): AppData {
   const base = emptyData();
+  const { sync: _oldReminderSync, ...rest } = raw as Partial<AppData> & { sync?: unknown };
   return {
     ...base,
-    ...raw,
+    ...rest,
     version: 1,
     settings: { ...base.settings, ...raw.settings },
     locations: raw.locations?.some((l) => l.id === HOME.id) ? raw.locations : [HOME, ...(raw.locations ?? [])],
     arrivals: raw.arrivals ?? {},
     plan: raw.plan ?? null,
-    sync: raw.sync ?? base.sync,
+    push: raw.push ?? null,
   };
 }
 
@@ -135,11 +143,12 @@ export const actions = {
 const BACKUP_APP = 'schedule-app-planner';
 
 export function exportBackup(d: AppData, now: Ms): string {
-  return JSON.stringify({ app: BACKUP_APP, version: 1, exportedAt: new Date(now).toISOString(), data: d }, null, 2);
+  const data: AppData = { ...d, push: null }; // notification keys belong to this phone only
+  return JSON.stringify({ app: BACKUP_APP, version: 1, exportedAt: new Date(now).toISOString(), data }, null, 2);
 }
 
-/** Parses a backup file. Throws with a readable message if it isn't one. */
-export function parseBackup(text: string, now: Ms): AppData {
+/** Parses a backup file, keeping this phone's notification setup. Throws with a readable message if it isn't one. */
+export function parseBackup(text: string, now: Ms, current: AppData | null = null): AppData {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -153,5 +162,5 @@ export function parseBackup(text: string, now: Ms): AppData {
   for (const key of ['tasks', 'blocks', 'locations', 'rules'] as const) {
     if (o.data[key] !== undefined && !Array.isArray(o.data[key])) throw new Error(`Backup is damaged: "${key}" is not a list.`);
   }
-  return replan(normalize(o.data), now);
+  return replan({ ...normalize(o.data), push: current?.push ?? null }, now);
 }

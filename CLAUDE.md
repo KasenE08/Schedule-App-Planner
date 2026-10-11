@@ -49,16 +49,19 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - Data is stored in localStorage on the phone. Backups are JSON files (`app: "schedule-app-planner"`) and can be exported and imported in Settings.
 - Offline: `vite.config.ts` writes `sw.js`, which precaches every built file.
 
-## Reminders sync (Shortcut "Planner Sync")
-- **Sync** copies a JSON payload `{app, items:[{id,title,remind,notes}]}` to the clipboard and opens `shortcuts://run-shortcut?name=Planner%20Sync`.
-- Items cover unfinished planned tasks and block step reminders from the start of today through `syncDays` (default 7). Title = task + real due date. `remind` = scheduled start, in en-US long form so Shortcuts parses it. Notes end with `[planner:<id>]`. Step ids are `step-<blockId>-<ms>`, unique per occurrence.
-- The Shortcut collects the ids of completed reminders in Planner, deletes everything in Planner, re-adds the items not completed, and copies `planner-sync-done:<id>,<id>` to the clipboard.
-- Back in the app, **Paste check-offs** marks those tasks done (no replan). Step ids are ignored.
-- "Out of date" = the current payload differs from the last one sent (adjusted for the check-offs). The step-by-step build guide lives in the app: Settings → Reminders sync.
+## Notifications (replaced the Reminders sync)
+- The PWA can't schedule local notifications on iOS, so a free **Cloudflare Worker** (`worker/`) sends Web Push at each task's start time.
+- The worker is one Durable Object (`PushHub`, SQLite-backed, free plan) holding the VAPID key, registered devices (endpoint + secret hash, max 5) and the queue. Its **alarm** fires at the next due item; items more than 30 min late are dropped, 5xx and network errors retry twice a minute apart, and a 404/410 forgets the device.
+- **End-to-end encrypted:** the app encrypts every notification (RFC 8291 aes128gcm, `src/push/webpush.ts`, tested against the RFC vector) before upload. The server only sees times and ciphertext.
+- The app uploads the queue (`PUT /queue`, items from now through `notifyDays`) about 1.5 s after any change, on foreground and when back online, but only when the notification fingerprint changed. Tapping a notification opens that task.
+- Push setup (`AppData.push`) belongs to this phone: it is never exported in backups and is kept when importing one.
+- Deploy: `.github/workflows/worker.yml` runs `wrangler deploy` when `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repo secrets exist, and prints the server URL in the run summary. The user pastes it into Settings → Notifications. The setup guide is in the app.
 
 ## Layout
 - `src/core/` holds the pure scheduling logic with no UI: types, time, recurrence, availability, priority, estimate, scheduler, defaults.
 - `src/app/` holds the Preact UI: `model.ts` (pure app state and actions, tested), `store.ts` (persistence), and the screens (Today, TaskList, Settings, TaskForm, TaskDetail, BlockForm).
+- `src/push/` holds Web Push encryption and base64url helpers, shared by the app and the worker.
+- `worker/` holds the notification server: `src/hub.ts` (logic, unit tested with fake storage and fetch) and `src/index.ts` (Cloudflare entry and the Durable Object).
 - `test/` holds the Vitest suites; `fixtures.ts` is a sample week with generic place names.
 - `.github/workflows/deploy.yml`: every push to `dev` runs the checks, builds, and publishes `dist/` to the `gh-pages` branch. Pages serves `gh-pages`.
 - `scripts/make-icons.mjs` generates the app icons.
@@ -85,6 +88,11 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - The starter backup with the user's real schedule was handed over outside the repo.
 - 53 tests passing. Smoke-tested in headless Chromium at iPhone size, including offline reload.
 
-### Phase 3: Reminders sync (done)
+### Phase 3: Reminders sync (done, later replaced)
 - Sync button (with a dot when out of date), clipboard payload, Shortcut launch, Paste check-offs banner, and the in-app Shortcut setup guide.
 - 62 tests passing. Browser smoke test of the full send and paste-back flow. The Shortcut itself can only be tested on the iPhone.
+
+### Phase 3b: Standalone notifications (done)
+- At the user's request the Reminders/Shortcut sync was removed completely and replaced with Web Push from a free Cloudflare Worker.
+- Phone-side encryption, server (Durable Object + alarm), Settings → Notifications (turn on, test, days ahead, turn off), setup guide, notification tap opens the task, and the worker deploy workflow.
+- 74 tests passing (including the RFC 8291 vector and server tests). Worker bundled with `wrangler --dry-run` and run locally in workerd, which caught an "Illegal invocation" bug with the global fetch (fixed). Real delivery can only be tested on the iPhone after the user deploys.

@@ -4,6 +4,8 @@ import { dateKey } from '../core/time';
 import { actions, exportBackup, parseBackup, type AppData } from './model';
 import { commit } from './store';
 import { Chips, useUI } from './ui';
+import { useState } from 'preact/hooks';
+import { disablePush, enablePush, pushSupported, sendTest, uploadNow } from './push';
 import { fmtMin, inputToMin, minToInput, recurrenceText, TAG_LABELS, uid, WEEKDAYS } from './format';
 
 export function Settings({ data }: { data: AppData }) {
@@ -53,25 +55,7 @@ export function Settings({ data }: { data: AppData }) {
       <Locations data={data} />
       <Rules data={data} />
       <General settings={data.settings} />
-      <section>
-        <h3>Reminders sync</h3>
-        <div class="card">
-          <label class="set-row">
-            <span>Days to put in Reminders</span>
-            <span>
-              <input type="number" inputMode="numeric" value={data.settings.syncDays} onChange={(e) => {
-                const v = Math.min(28, Math.max(1, Number(e.currentTarget.value) || 7));
-                commit((d) => ({ ...d, settings: { ...d.settings, syncDays: v } }));
-              }} /> days
-            </span>
-          </label>
-          <p class="muted small">
-            Last sync: {data.sync.at ? new Date(data.sync.at).toLocaleString() : 'never'}. Syncing replaces everything in your
-            "Planner" list, so keep that list for the app only.
-          </p>
-          <button class="btn" onClick={() => ui.open({ kind: 'guide' })}>Shortcut setup guide</button>
-        </div>
-      </section>
+      <Notifications data={data} />
 
       <Backup data={data} />
 
@@ -267,7 +251,7 @@ function Backup({ data }: { data: AppData }) {
     if (!f) return;
     try {
       const text = await f.text();
-      const next = parseBackup(text, Date.now());
+      const next = parseBackup(text, Date.now(), data);
       if (!confirm(`Replace everything with this backup (${next.tasks.length} tasks, ${next.blocks.length} fixed times)?`)) return;
       commit(() => next);
       alert('Backup restored.');
@@ -287,6 +271,72 @@ function Backup({ data }: { data: AppData }) {
             <input type="file" accept="application/json,.json" hidden onChange={(e) => importFile(e.currentTarget.files?.[0])} />
           </label>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function Notifications({ data }: { data: AppData }) {
+  const ui = useUI();
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const p = data.push;
+  const run = async (fn: () => Promise<void>, done?: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      if (done) alert(done);
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const unsupported = pushSupported();
+  return (
+    <section>
+      <h3>Notifications</h3>
+      <div class="card">
+        {!p ? (
+          <>
+            <p class="muted small">
+              Get a notification when it's time to start each assignment, plus laundry steps. Needs your free notification server
+              (one-time setup).
+            </p>
+            {unsupported && <p class="warn small">{unsupported}</p>}
+            <label class="field">
+              <span class="field-label">Notification server address</span>
+              <input type="url" inputMode="url" autoCapitalize="off" autoCorrect="off" placeholder="https://planner-push.yourname.workers.dev"
+                value={url} onInput={(e) => setUrl(e.currentTarget.value)} />
+            </label>
+            <div class="actions">
+              <button class="btn primary" disabled={busy || !url} onClick={() => run(() => enablePush(url), 'Notifications are on.')}>
+                Turn on notifications
+              </button>
+              <button class="btn" onClick={() => ui.open({ kind: 'notifyGuide' })}>Setup guide</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p class="small">
+              On · {p.error ? <span class="warn">{p.error}</span> : p.uploadedAt ? `updated ${new Date(p.uploadedAt).toLocaleString()}` : 'updating…'}
+            </p>
+            <label class="set-row">
+              <span>Days ahead</span>
+              <span>
+                <input type="number" inputMode="numeric" value={data.settings.notifyDays} onChange={(e) => {
+                  const v = Math.min(28, Math.max(1, Number(e.currentTarget.value) || 7));
+                  commit((d) => ({ ...d, settings: { ...d.settings, notifyDays: v } }));
+                }} /> days
+              </span>
+            </label>
+            <div class="actions">
+              <button class="btn" disabled={busy} onClick={() => run(sendTest, 'Test sent. It should arrive in a few seconds.')}>Send test</button>
+              {p.error && <button class="btn" disabled={busy} onClick={() => run(uploadNow)}>Retry</button>}
+              <button class="btn danger" disabled={busy} onClick={() => confirm('Turn off notifications?') && run(disablePush)}>Turn off</button>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
