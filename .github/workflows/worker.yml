@@ -3,7 +3,7 @@ name: Deploy notification server
 on:
   workflow_dispatch:
   push:
-    branches: [dev]
+    branches: [main]
     paths: ['worker/**', 'src/push/**']
 
 jobs:

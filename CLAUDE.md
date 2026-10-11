@@ -6,7 +6,7 @@ A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignment
 - Ask questions and show a plan before writing code. Build in phases; confirm with the user before each phase.
 - Every scheduler rule has a unit test. Run `npm run check` (typecheck + tests in two timezones) after every change.
 - Update the progress log below at the end of each phase, and give the user a plain-language summary.
-- Develop on the `dev` branch. GitHub Pages hosts from `dev` while building; switch to `main` after the user signs off.
+- `main` is live: every push to `main` deploys the app (and the worker if it changed). Do new work on `dev` and merge to `main` only after the user approves.
 - The repo is public: never commit the user's personal data (real place names, their schedule). Personal data lives only on the phone and in backup files.
 - The user is on a limited plan: keep work token-efficient.
 - Commit messages end with: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
@@ -67,7 +67,7 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - `src/push/` holds Web Push encryption and base64url helpers, shared by the app and the worker.
 - `worker/` holds the notification server: `src/hub.ts` (logic, unit tested with fake storage and fetch) and `src/index.ts` (Cloudflare entry and the Durable Object).
 - `test/` holds the Vitest suites; `fixtures.ts` is a sample week with generic place names.
-- `.github/workflows/deploy.yml`: every push to `dev` runs the checks, builds, and publishes `dist/` to the `gh-pages` branch. Pages serves `gh-pages`.
+- `.github/workflows/deploy.yml`: every push to `main` runs the checks, builds, and publishes `dist/` to the `gh-pages` branch. Pages serves `gh-pages`.
 - `scripts/make-icons.mjs` generates the app icons.
 
 ## Commands
@@ -112,3 +112,6 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - Long-press drag: drop on a date to move, drop on an assignment to reorder; confirmation when a move makes something late or no room that day; "moved" label and undo in the task.
 - The week strip is sticky so it's reachable while dragging.
 - 98 tests passing; drag-and-drop smoke tested in the browser.
+
+### Release
+- The user signed off; `dev` was merged into `main`, and deploys (app and worker) now run from `main`.
