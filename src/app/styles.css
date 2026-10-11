@@ -7,11 +7,12 @@
   --muted: #8b939d;
   --accent: #5fae78; /* matches the app icon */
   --warn: #d08a7e;
-  --c-online: #6f94c6;
-  --c-online-missing: #9a86c2;
-  --c-paper: #6fa58c;
-  --c-paper-missing: #c4a066;
-  --c-other: #7f9aa3;
+  /* Category colors: shades of green and teal, kept distinct from each other. */
+  --c-online: #7bbf6a;
+  --c-online-missing: #b8c95c;
+  --c-paper: #4fb3a5;
+  --c-paper-missing: #4a90a8;
+  --c-other: #8a9a8f;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
