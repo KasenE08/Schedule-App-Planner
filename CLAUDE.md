@@ -68,7 +68,7 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - `worker/` holds the notification server: `src/hub.ts` (logic, unit tested with fake storage and fetch) and `src/index.ts` (Cloudflare entry and the Durable Object).
 - `test/` holds the Vitest suites; `fixtures.ts` is a sample week with generic place names.
 - `.github/workflows/deploy.yml`: every push to `main` runs the checks, builds, and publishes `dist/` to the `gh-pages` branch. Pages serves `gh-pages`.
-- `scripts/make-icons.mjs` generates the app icons.
+- `scripts/icon.svg` is the app icon (green calendar with a checklist); `scripts/make-icons.mjs` renders it to `public/icon-*.png` with Playwright.
 
 ## Commands
 `npm run check` (typecheck + tests) · `npm run dev` · `npm run build`
