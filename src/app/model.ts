@@ -3,7 +3,8 @@ import type {
 } from '../core/types';
 import { DEFAULT_RULES, DEFAULT_SETTINGS, HOME } from '../core/defaults';
 import { schedule } from '../core/scheduler';
-import { dateKey } from '../core/time';
+import { addDays, at, dateKey, MIN } from '../core/time';
+import { splitMinutes, type DoneRecord } from '../core/estimate';
 
 export interface Plan {
   at: Ms;
@@ -25,6 +26,10 @@ export interface AppData {
   plan: Plan | null;
   /** Notification setup for this phone; null when notifications are off. Never exported in backups. */
   push: PushState | null;
+  /** Assignments timed with Start and Done, for learning real durations. */
+  history: DoneRecord[];
+  /** Late-night time unlocked by "Falling behind" for tonight. */
+  night: { start: Ms; end: Ms } | null;
 }
 
 export interface PushState {
@@ -52,6 +57,8 @@ export function emptyData(): AppData {
     arrivals: {},
     plan: null,
     push: null,
+    history: [],
+    night: null,
   };
 }
 
@@ -68,11 +75,16 @@ export function normalize(raw: Partial<AppData>): AppData {
     arrivals: raw.arrivals ?? {},
     plan: raw.plan ?? null,
     push: raw.push ?? null,
+    history: raw.history ?? [],
+    night: raw.night ?? null,
   };
 }
 
-export function replan(d: AppData, now: Ms): AppData {
+export function replan(d: AppData, now: Ms, exactStart?: Ms): AppData {
+  const night = d.night && d.night.end > now ? d.night : null;
   const r = schedule({
+    exactStart,
+    nightExtension: night ?? undefined,
     now,
     tasks: d.tasks,
     blocks: d.blocks,
@@ -81,7 +93,16 @@ export function replan(d: AppData, now: Ms): AppData {
     settings: d.settings,
     arrivals: d.arrivals,
   });
-  return { ...d, plan: { at: now, ...r } };
+  return { ...d, night, plan: { at: now, ...r } };
+}
+
+/** Tonight's extra time: from the normal day end until the latest allowed (default 12am–2am). */
+export function nightWindow(d: AppData, now: Ms): { start: Ms; end: Ms } {
+  const today = dateKey(now);
+  const { dayEndMin, latestNightMin } = d.settings;
+  // Already past midnight: tonight's window is the one that started yesterday.
+  if (now < at(today, latestNightMin)) return { start: at(addDays(today, -1), dayEndMin), end: at(today, latestNightMin) };
+  return { start: at(today, dayEndMin), end: at(addDays(today, 1), latestNightMin) };
 }
 
 /** Replan when opening the app on a new day, so yesterday's leftovers move forward. */
@@ -105,9 +126,38 @@ export const actions = {
   startTask(d: AppData, id: string, now: Ms): AppData {
     return replan(patchTask(d, id, { status: 'inProgress', startedAt: now }), now);
   },
-  /** Finishing early leaves free time: the plan is not recomputed. */
+  /** Finishing early leaves free time: the plan is not recomputed. Timed automatic estimates feed learning. */
   completeTask(d: AppData, id: string, now: Ms): AppData {
-    return patchTask(d, id, { status: 'done', completedAt: now });
+    const t = d.tasks.find((x) => x.id === id);
+    let history = d.history;
+    if (t?.status === 'inProgress' && t.startedAt !== undefined && t.baseMin && !t.estimateManual) {
+      history = [...history, { type: t.type, baseMin: t.baseMin, actualMin: Math.round((now - t.startedAt) / MIN), at: now }].slice(-200);
+    }
+    return { ...patchTask(d, id, { status: 'done', completedAt: now }), history };
+  },
+  /**
+   * Falling behind: reschedules everything not started so the first one begins exactly 5 minutes
+   * from now. Tonight may run past the day end (until 2am) but only for tasks that would otherwise be late.
+   */
+  fallingBehind(d: AppData, now: Ms): AppData {
+    return replan({ ...d, night: nightWindow(d, now) }, now, now + 5 * MIN);
+  },
+  /** Replaces a big task with parts spread over several days. */
+  splitTask(d: AppData, task: Task, now: Ms): AppData {
+    const mins = splitMinutes(task.estimateMin);
+    const group = task.group ?? task.id;
+    const parts: Task[] = mins.map((m, i) => ({
+      ...task,
+      id: `${task.id}-p${i + 1}`,
+      title: `${task.title} (part ${i + 1} of ${mins.length})`,
+      estimateMin: m,
+      baseMin: task.baseMin ? Math.max(5, Math.round(task.baseMin / mins.length)) : undefined,
+      group,
+      part: i + 1,
+      parts: mins.length,
+      createdAt: task.createdAt + i,
+    }));
+    return replan({ ...d, tasks: [...d.tasks.filter((t) => t.id !== task.id), ...parts] }, now);
   },
   reopenTask(d: AppData, id: string, now: Ms): AppData {
     return replan(patchTask(d, id, { status: 'todo', startedAt: undefined, completedAt: undefined }), now);

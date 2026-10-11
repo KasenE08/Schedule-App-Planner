@@ -1,6 +1,6 @@
 # Schedule App Planner
 
-A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignments around fixed commitments and syncs them to the iOS Reminders list **Planner** through an Apple Shortcut. The user only enters what they have to do and its actual due date; the app estimates, schedules and creates every reminder.
+A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignments around fixed commitments and notifies them when each one should start (Web Push through a free Cloudflare Worker). The user only enters what they have to do and its actual due date; the app estimates, schedules and notifies.
 
 ## Working rules
 - Ask questions and show a plan before writing code. Build in phases; confirm with the user before each phase.
@@ -39,10 +39,11 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 
 **Laundry** (Sunday 3:30pm, 2 hours, non-blocking so homework may run during it): reminders at +0 (washer), +60 (dryer), +120 (take out).
 
-### Coming in later phases
-- **Falling behind:** reschedule the rest of today starting exactly now + 5 min. Overflow moves to later today or the next day by priority. Past 12am only if needed to meet deadlines, hard stop at 2am.
-- **Big tasks** (> 90 min): split into chunks across days, after asking the user.
-- **Learning:** Start/Done taps in the app record real durations to adjust estimates per type.
+**Falling behind** (button on today's schedule): reschedules everything not started so the first task begins **exactly now + 5 min** (6:03 → 6:08); later tasks keep the 5-minute grid. Started tasks keep their slot. Overflow moves to later today or the next days by priority. Tonight's window from the day end to `latestNightMin` (default 12am–2am) unlocks, **only for tasks that would otherwise be late**, and only if that reduces lateness. It stays active for replans until 2am. If even that isn't enough, the task is flagged late ("even working until 2am").
+
+**Big tasks** (estimate > `bigTaskMin`, 90): on save the app asks before splitting into roughly hour-long parts ("Title (part 1 of 3)", same due date). Parts go in order, **one per day**; a part may share a day only if spreading would make it late. A part is never placed before an earlier one.
+
+**Learning:** Start → Done in the app records the real minutes against the task's unpadded base (`baseMin`). Per type: the average ratio of the last 10 records (ignoring under 0.25× or over 4× mis-taps), applied after 3 records and clamped 0.5–2×, then padding on top. Typed (manual) estimates and Done without Start don't count. Learning affects new estimates, not existing tasks.
 
 ## App behavior
 - The plan is **saved**, not recalculated live. It is recalculated when a task is added, edited, deleted, started or reopened, when the arrival time or any setting changes, and automatically on the first open of a new day. Done and notes never move anything (finishing early = free time).
@@ -96,3 +97,10 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - At the user's request the Reminders/Shortcut sync was removed completely and replaced with Web Push from a free Cloudflare Worker.
 - Phone-side encryption, server (Durable Object + alarm), Settings → Notifications (turn on, test, days ahead, turn off), setup guide, notification tap opens the task, and the worker deploy workflow.
 - 74 tests passing (including the RFC 8291 vector and server tests). Worker bundled with `wrangler --dry-run` and run locally in workerd, which caught an "Illegal invocation" bug with the global fetch (fixed). Deployed by the user to `planner-push.<subdomain>.workers.dev`; the test notification was confirmed arriving on the iPhone.
+
+### Phase 4: Smart features (done)
+- Falling behind: exact +5 start, night extension (12am–2am) only for tasks that would be late, with a hard stop.
+- Big-task splitting with confirmation, parts in order and one per day.
+- Learned estimates from Start/Done timings (Settings → Learning shows progress per type).
+- Clearer overload text and "past midnight" labels on the timeline.
+- 90 tests passing; browser smoke test of split and falling behind (caught a stale-time bug in the prompt, fixed).

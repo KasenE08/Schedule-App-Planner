@@ -6,7 +6,9 @@ import { commit } from './store';
 import { Chips, useUI } from './ui';
 import { useState } from 'preact/hooks';
 import { disablePush, enablePush, pushSupported, sendTest, uploadNow } from './push';
-import { fmtMin, inputToMin, minToInput, recurrenceText, TAG_LABELS, uid, WEEKDAYS } from './format';
+import { fmtMin, inputToMin, minToInput, recurrenceText, TAG_LABELS, TYPE_LABELS, uid, WEEKDAYS } from './format';
+import { learnedRatio } from '../core/estimate';
+import type { AssignmentType } from '../core/types';
 
 export function Settings({ data }: { data: AppData }) {
   const ui = useUI();
@@ -55,6 +57,7 @@ export function Settings({ data }: { data: AppData }) {
       <Locations data={data} />
       <Rules data={data} />
       <General settings={data.settings} />
+      <Learning data={data} />
       <Notifications data={data} />
 
       <Backup data={data} />
@@ -224,6 +227,33 @@ function General({ settings }: { settings: S }) {
         {numRow('Big task is over', 'bigTaskMin')}
         {numRow('Estimate padding', 'paddingPct', '%')}
         {numRow('Plan ahead', 'horizonDays', 'days')}
+        <label class="set-row">
+          <span>Falling behind: latest</span>
+          <input type="time" value={minToInput(settings.latestNightMin)} onChange={(e) => set({ latestNightMin: inputToMin(e.currentTarget.value) })} />
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function Learning({ data }: { data: AppData }) {
+  const rows = (Object.keys(TYPE_LABELS) as AssignmentType[])
+    .map((t) => ({ t, ...learnedRatio(data.history, t) }))
+    .filter((r) => r.samples > 0);
+  return (
+    <section>
+      <h3>Learning</h3>
+      <div class="card">
+        <p class="muted small">
+          Tap Start and Done on assignments and estimates adjust to how long you really take (after 3 of a type). Finishing early leaves free time.
+        </p>
+        {rows.map((r) => (
+          <div class="set-row">
+            <span>{TYPE_LABELS[r.t]}</span>
+            <span class="small">{r.samples < 3 ? `${r.samples} of 3 timed` : `${Math.round(r.ratio * 100)}% of the usual time`}</span>
+          </div>
+        ))}
+        {rows.length === 0 && <p class="muted small">Nothing timed yet.</p>}
       </div>
     </section>
   );

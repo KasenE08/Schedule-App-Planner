@@ -1,11 +1,12 @@
 import { useState } from 'preact/hooks';
 import type { AssignmentType, Format, Task } from '../core/types';
-import { estimateMinutes } from '../core/estimate';
+import { BASE_ESTIMATES, estimateMinutes, learnedRatio } from '../core/estimate';
 import { dateKey } from '../core/time';
 import { actions, type AppData } from './model';
 import { commit } from './store';
 import { Chips, Field, SheetFrame, useUI } from './ui';
-import { TYPE_LABELS, uid } from './format';
+import { fmtDur, TYPE_LABELS, uid } from './format';
+import { splitMinutes } from '../core/estimate';
 
 const TYPES = Object.keys(TYPE_LABELS) as AssignmentType[];
 
@@ -22,7 +23,8 @@ export function TaskForm({ data, task }: { data: AppData; task?: Task }) {
   const [notes, setNotes] = useState(task?.notes ?? '');
   const [error, setError] = useState('');
 
-  const auto = estimateMinutes(type, { paddingPct: data.settings.paddingPct });
+  const learned = learnedRatio(data.history, type);
+  const auto = estimateMinutes(type, { paddingPct: data.settings.paddingPct, learnedRatio: learned.ratio });
   const estimate = manual ?? auto;
 
   const save = () => {
@@ -40,13 +42,17 @@ export function TaskForm({ data, task }: { data: AppData; task?: Task }) {
       due: missing ? null : new Date(y, m - 1, d, hh, mm).getTime(),
       estimateMin: estimate,
       estimateManual: manual !== null,
+      baseMin: manual !== null ? task?.baseMin : task?.group ? task.baseMin : BASE_ESTIMATES[type],
       notes: notes.trim() || undefined,
       status: task?.status ?? 'todo',
       startedAt: task?.startedAt,
       completedAt: task?.completedAt,
       createdAt: task?.createdAt ?? Date.now(),
     };
-    commit((d0, now) => actions.saveTask(d0, next, now));
+    const big = estimate > data.settings.bigTaskMin && !next.group;
+    const split =
+      big && confirm(`This will take about ${fmtDur(estimate)}. Split it into ${splitMinutes(estimate).length} parts on different days?`);
+    commit((d0, now) => (split ? actions.splitTask(d0, next, now) : actions.saveTask(d0, next, now)));
     ui.close();
   };
 
@@ -88,7 +94,13 @@ export function TaskForm({ data, task }: { data: AppData; task?: Task }) {
           </Field>
         </div>
       )}
-      <Field label="Time estimate (minutes)" hint={manual === null ? `Automatic for ${TYPE_LABELS[type].toLowerCase()}, includes padding.` : 'Your own estimate.'}>
+      <Field label="Time estimate (minutes)" hint={
+          manual !== null
+            ? 'Your own estimate.'
+            : learned.samples >= 3
+              ? `Automatic, adjusted from your last ${learned.samples} ${TYPE_LABELS[type].toLowerCase()} times, includes padding.`
+              : `Automatic for ${TYPE_LABELS[type].toLowerCase()}, includes padding.`
+        }>
         <div class="row">
           <input
             type="number"

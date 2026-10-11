@@ -10,7 +10,7 @@ import { category, fmtDay, fmtDue, fmtDur, fmtTime, inputToMin, minToInput, TAG_
 
 type Entry =
   | { kind: 'block'; start: Ms; end: Ms; title: string; sub: string; soft: boolean; tag: string }
-  | { kind: 'task'; start: Ms; end: Ms; task: Task; late: boolean }
+  | { kind: 'task'; start: Ms; end: Ms; task: Task; late: boolean; night?: boolean }
   | { kind: 'reminder'; start: Ms; title: string }
   | { kind: 'now'; start: Ms };
 
@@ -39,7 +39,7 @@ function entriesFor(d: AppData, key: DateKey, now: Ms): Entry[] {
   }
   for (const i of d.plan?.items ?? []) {
     const task = tasks.get(i.taskId);
-    if (task && inDay(i.start)) out.push({ kind: 'task', start: i.start, end: i.end, task, late: i.late });
+    if (task && inDay(i.start)) out.push({ kind: 'task', start: i.start, end: i.end, task, late: i.late, night: i.night });
   }
   for (const r of d.plan?.blockReminders ?? []) {
     if (inDay(r.at)) out.push({ kind: 'reminder', start: r.at, title: r.title });
@@ -67,9 +67,16 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
           <h1>{day === today ? 'Today' : fmtDay(day, { weekday: 'long' })}</h1>
           <div class="muted">{fmtDay(day, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
         </div>
-        <button class="btn small" onClick={() => ui.open({ kind: 'block', once: true })}>
-          + Event
-        </button>
+        <div class="row">
+          {day === today && hasOpenWork(data) && (
+            <button class="btn small" onClick={behind}>
+              Falling behind
+            </button>
+          )}
+          <button class="btn small" onClick={() => ui.open({ kind: 'block', once: true })}>
+            + Event
+          </button>
+        </div>
       </header>
 
       {data.push?.error && <div class="card small warn">Notifications: {data.push.error}</div>}
@@ -169,6 +176,7 @@ function TaskEntry({ e }: { e: Extract<Entry, { kind: 'task' }> }) {
           {cat.label} · {fmtDur(t.estimateMin)} · {t.due === null ? 'missing, ASAP' : `due ${fmtDue(t.due)}`}
         </div>
         {e.late && <div class="warn small">Can't finish before it's due</div>}
+        {e.night && !e.late && <div class="small night">Past midnight to finish on time</div>}
       </div>
       {t.status !== 'done' && (
         <button
@@ -198,11 +206,29 @@ function Warnings({ data }: { data: AppData }) {
         return (
           <button class="link warn-row" onClick={() => ui.open({ kind: 'detail', id: t.id })}>
             {w.kind === 'late'
-              ? `${t.title}: finishes ${fmtDue(w.end)}, due ${fmtDue(w.due)}`
+              ? `${t.title}: finishes ${fmtDue(w.end)}, due ${fmtDue(w.due)}${data.night ? ' (even working until ' + fmtTime(data.night.end) + ')' : ''}`
               : `${t.title}: no time fits in the next ${data.settings.horizonDays} days`}
           </button>
         );
       })}
     </div>
   );
+}
+
+const hasOpenWork = (d: AppData) => d.tasks.some((t) => t.status === 'todo');
+
+function behind() {
+  const first = Date.now() + 5 * 60_000;
+  if (!confirm(`Reschedule everything you haven't started, beginning at ${fmtTime(first)}?`)) return;
+  let msg = '';
+  commit((d, n) => {
+    const next = actions.fallingBehind(d, n);
+    const items = next.plan?.items.filter((i) => next.tasks.find((t) => t.id === i.taskId)?.status === 'todo') ?? [];
+    const parts = [items.length ? `Rescheduled. First assignment at ${fmtTime(Math.min(...items.map((i) => i.start)))}.` : 'Nothing left to reschedule.'];
+    if (items.some((i) => i.night)) parts.push('Some work runs past midnight to finish on time.');
+    if (next.plan?.warnings.length) parts.push("Some assignments still can't be done on time. See Overload.");
+    msg = parts.join(' ');
+    return next;
+  });
+  alert(msg);
 }

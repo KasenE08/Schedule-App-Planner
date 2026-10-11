@@ -89,6 +89,8 @@ export interface Settings {
   slotRoundMin: number;
   /** How many days of notifications to send to the notification server. */
   notifyDays: number;
+  /** Falling behind may run until this time after midnight (120 = 2am), only to stay on time. */
+  latestNightMin: number;
 }
 
 export type Format = 'online' | 'paper';
@@ -122,6 +124,12 @@ export interface Task {
   estimateMin: number;
   /** True when the user typed the estimate instead of using the automatic one. */
   estimateManual?: boolean;
+  /** Unpadded, unlearned base minutes the estimate came from; learning compares real time against it. */
+  baseMin?: number;
+  /** Parts of a split big task share a group; part is 1-based. */
+  group?: string;
+  part?: number;
+  parts?: number;
   notes?: string;
   status: TaskStatus;
   startedAt?: Ms;
@@ -138,6 +146,10 @@ export interface ScheduleInput {
   settings: Settings;
   /** Actual time arrived home from school, minutes after midnight, per date. */
   arrivals?: Record<DateKey, number>;
+  /** Falling-behind mode: the first task starts exactly here (no 5-minute snapping). */
+  exactStart?: Ms;
+  /** Extra late-night time (e.g. 12am–2am), usable only by tasks that would otherwise be late. */
+  nightExtension?: Interval;
 }
 
 export interface ScheduledItem {
@@ -145,6 +157,8 @@ export interface ScheduledItem {
   start: Ms;
   end: Ms;
   late: boolean;
+  /** Placed in the late-night extension to stay on time. */
+  night?: boolean;
 }
 
 export interface BlockReminder {
