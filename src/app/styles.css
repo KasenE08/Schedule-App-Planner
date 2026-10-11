@@ -69,6 +69,7 @@ h3 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: 0.06
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
 .row { display: flex; align-items: center; gap: 10px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.arrival { flex-wrap: wrap; }
 .arrival input { width: auto; flex: 0 0 auto; }
 .overload { border-color: rgba(208, 138, 126, 0.5); }
 .overload strong { color: var(--warn); display: block; margin-bottom: 4px; }

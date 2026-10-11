@@ -99,6 +99,17 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
 
       {school && day <= today && (
         <div class="card row arrival">
+          {day === today && data.arrivals[day] === undefined && now >= school.end && (
+            <button
+              class="btn small primary"
+              onClick={() => {
+                const t = new Date();
+                commit((d, n) => actions.setArrival(d, day, t.getHours() * 60 + t.getMinutes(), n));
+              }}
+            >
+              I'm home now
+            </button>
+          )}
           <span>Home from school</span>
           <input
             type="time"
