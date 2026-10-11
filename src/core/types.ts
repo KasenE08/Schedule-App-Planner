@@ -126,6 +126,10 @@ export interface Task {
   estimateManual?: boolean;
   /** Unpadded, unlearned base minutes the estimate came from; learning compares real time against it. */
   baseMin?: number;
+  /** Moved here by hand: schedule on this day (or the next with room), never earlier. */
+  pinDay?: DateKey;
+  /** Hand-set order among tasks pinned to the same day (0 = first). */
+  pinOrder?: number;
   /** Parts of a split big task share a group; part is 1-based. */
   group?: string;
   part?: number;

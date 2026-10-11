@@ -96,6 +96,14 @@ export function replan(d: AppData, now: Ms, exactStart?: Ms): AppData {
   return { ...d, night, plan: { at: now, ...r } };
 }
 
+/** Tasks late in `after` that weren't late in `before`: what a move would newly make late. */
+export function newlyLate(before: AppData, after: AppData): Task[] {
+  const was = new Set(before.plan?.items.filter((i) => i.late).map((i) => i.taskId));
+  const now = new Set(after.plan?.items.filter((i) => i.late).map((i) => i.taskId));
+  for (const w of after.plan?.warnings ?? []) if (w.kind === 'unscheduled') now.add(w.taskId);
+  return after.tasks.filter((t) => now.has(t.id) && !was.has(t.id));
+}
+
 /** Tonight's extra time: from the normal day end until the latest allowed (default 12am–2am). */
 export function nightWindow(d: AppData, now: Ms): { start: Ms; end: Ms } {
   const today = dateKey(now);
@@ -141,6 +149,20 @@ export const actions = {
    */
   fallingBehind(d: AppData, now: Ms): AppData {
     return replan({ ...d, night: nightWindow(d, now) }, now, now + 5 * MIN);
+  },
+  /** Dragged onto a day: schedule it that day (or the next with room) and keep it there until undone. */
+  moveToDay(d: AppData, id: string, day: DateKey, now: Ms): AppData {
+    return replan(patchTask(d, id, { pinDay: day, pinOrder: undefined }), now);
+  },
+  /** Reordered by hand: every listed task is kept on `day` in this order. */
+  reorderDay(d: AppData, day: DateKey, orderedIds: string[], now: Ms): AppData {
+    const pos = new Map(orderedIds.map((id, i) => [id, i]));
+    const tasks = d.tasks.map((t) => (pos.has(t.id) ? { ...t, pinDay: day, pinOrder: pos.get(t.id) } : t));
+    return replan({ ...d, tasks }, now);
+  },
+  /** "Let the app schedule it": drops a hand move. */
+  unpin(d: AppData, id: string, now: Ms): AppData {
+    return replan(patchTask(d, id, { pinDay: undefined, pinOrder: undefined }), now);
   },
   /** Replaces a big task with parts spread over several days. */
   splitTask(d: AppData, task: Task, now: Ms): AppData {

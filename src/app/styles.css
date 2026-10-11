@@ -75,7 +75,14 @@ h3 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: 0.06
 .overload strong { color: var(--warn); display: block; margin-bottom: 4px; }
 .warn-row { display: block; text-align: left; color: var(--text); font-size: 13px; padding: 4px 0; }
 
-.week { display: flex; align-items: center; gap: 2px; margin-bottom: 14px; }
+.week {
+  display: flex; align-items: center; gap: 2px; margin: 0 -16px 14px; padding: 6px 16px;
+  position: sticky; top: env(safe-area-inset-top); z-index: 5; background: var(--bg);
+}
+/* Covers the area under the iPhone status bar so the sticky date strip doesn't show through it. */
+.screen::before {
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--bg); z-index: 6;
+}
 .week .link { font-size: 22px; padding: 4px 6px; }
 .day {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -165,3 +172,18 @@ textarea { resize: vertical; }
 .guide .sub { list-style: disc; padding-left: 18px; margin: 6px 0 0; }
 .guide h3 { margin-top: 18px; }
 .night { color: var(--c-online-missing); }
+
+.entry.task { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.entry.dragging { opacity: 0.35; }
+.drop-over { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drag-ghost {
+  position: fixed; z-index: 20; pointer-events: none; transform: translate(-50%, -130%);
+  background: var(--surface-2); border: 1px solid var(--accent); border-radius: 10px;
+  padding: 8px 12px; max-width: 70vw; font-weight: 550; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.drag-hint {
+  position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 64px); z-index: 20;
+  pointer-events: none; text-align: center; font-size: 13px; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px;
+}

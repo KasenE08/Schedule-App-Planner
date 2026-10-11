@@ -2,7 +2,7 @@ import type { Task } from '../core/types';
 import { actions, type AppData } from './model';
 import { commit } from './store';
 import { Field, SheetFrame, useUI } from './ui';
-import { category, fmtDue, fmtDur, fmtTime, TYPE_LABELS } from './format';
+import { category, fmtDay, fmtDue, fmtDur, fmtTime, TYPE_LABELS } from './format';
 
 export function TaskDetail({ data, id }: { data: AppData; id: string }) {
   const ui = useUI();
@@ -29,6 +29,14 @@ export function TaskDetail({ data, id }: { data: AppData; id: string }) {
         <dt>Status</dt>
         <dd>{statusText(t)}</dd>
       </dl>
+      {t.pinDay && (
+        <p class="small">
+          Moved by hand to {fmtDay(t.pinDay)}.{' '}
+          <button class="link" onClick={() => act(actions.unpin)}>
+            Let the app schedule it
+          </button>
+        </p>
+      )}
       {warning && (
         <p class="warn">{warning.kind === 'late' ? "This can't be finished before it's due." : 'No free time fits this yet.'}</p>
       )}

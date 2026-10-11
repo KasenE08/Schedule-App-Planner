@@ -15,6 +15,8 @@ interface State {
   floor: Ms;
   /** Parts of split tasks placed so far: group → part → end time. */
   parts: Map<string, Map<number, Ms>>;
+  /** Ids placed so far. */
+  placed: Set<string>;
 }
 
 interface Run {
@@ -81,7 +83,7 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
   const isShort = (t: Task) => t.estimateMin <= s.shortTaskMaxMin;
 
   const fixed: ScheduledItem[] = [];
-  let state: State = { prev: null, floor: input.exactStart ?? now, parts: new Map() };
+  let state: State = { prev: null, floor: input.exactStart ?? now, parts: new Map(), placed: new Set() };
 
   // A task already started holds its slot; it is the previous task for break purposes.
   for (const t of input.tasks.filter((t) => t.status === 'inProgress' && t.startedAt !== undefined)) {
@@ -104,7 +106,16 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
   /** A part may be placed only after every earlier part is done, started or placed. */
   const finishedPart = (group: string, part: number) =>
     input.tasks.some((x) => x.group === group && x.part === part && x.status !== 'todo');
+  // Hand moves: a pin to a past day no longer applies.
+  const today = dateKey(now);
+  const pinOf = (t: Task) => (t.pinDay && t.pinDay >= today ? t.pinDay : undefined);
+  const pinnedBefore = (t: Task) =>
+    pinOf(t) !== undefined && t.pinOrder !== undefined
+      ? input.tasks.filter((x) => x.status === 'todo' && x.id !== t.id && pinOf(x) === pinOf(t) && x.pinOrder !== undefined && x.pinOrder < t.pinOrder!)
+      : [];
   const ready = (t: Task, st: State) => {
+    // Hand-ordered tasks on a day go in the order they were arranged.
+    if (pinnedBefore(t).some((x) => !st.placed.has(x.id))) return false;
     if (!t.group || !t.part) return true;
     for (let p = 1; p < t.part; p++) if (!finishedPart(t.group, p) && !st.parts.get(t.group)?.has(p)) return false;
     return true;
@@ -117,7 +128,8 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
   const baseFrom = (t: Task, st: State) => (st.prev ? Math.max(st.floor, st.prev.end + gap(st.prev, t) * MIN) : st.floor);
   const startFor = (t: Task, st: State): Ms | null => {
     if (!ready(t, st)) return null;
-    const from = baseFrom(t, st);
+    const pin = pinOf(t);
+    const from = pin ? Math.max(baseFrom(t, st), at(pin, 0)) : baseFrom(t, st);
     const dur = t.estimateMin * MIN;
     // Falling behind: the first task may start exactly at the given minute; everything else snaps to the grid.
     const fit = (f: Ms) => {
@@ -143,7 +155,7 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
       parts = new Map(parts);
       parts.set(t.group, new Map(parts.get(t.group) ?? []).set(t.part, end));
     }
-    return { prev: { end, short: isShort(t), paired }, floor: end, parts };
+    return { prev: { end, short: isShort(t), paired }, floor: end, parts, placed: new Set(st.placed).add(t.id) };
   };
 
   /** Missing work may go first only if no dated task becomes late because of it. */

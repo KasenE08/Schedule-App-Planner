@@ -45,6 +45,8 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 
 **Learning:** Start → Done in the app records the real minutes against the task's unpadded base (`baseMin`). Per type: the average ratio of the last 10 records (ignoring under 0.25× or over 4× mis-taps), applied after 3 records and clamped 0.5–2×, then padding on top. Typed (manual) estimates and Done without Start don't count. Learning affects new estimates, not existing tasks.
 
+**Hand moves** (press and hold an assignment ~0.5 s, then drag): dropping on a date in the week strip pins it to that day (`pinDay`): it's scheduled that day, or the next day with room, never earlier. Dropping on another assignment reorders that day: the dragged one takes the target's spot, the others shift, and every assignment on that day gets pinned in that order (`pinOrder`). Rules (cutoffs, breaks) still apply. Pins stick through replans until "Let the app schedule it" in the task, and a pin to a past day is ignored. If a move would make anything late (or lands on a later day), the app asks before applying it.
+
 ## App behavior
 - The plan is **saved**, not recalculated live. It is recalculated when a task is added, edited, deleted, started or reopened, when the arrival time or any setting changes, and automatically on the first open of a new day. Done and notes never move anything (finishing early = free time).
 - On school days after school ends, the Schedule screen shows **I'm home now** until an arrival time is set; one tap sets the arrival to the current minute (the time box still allows any time). No arrival notification, by the user's choice.
@@ -105,3 +107,8 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - Learned estimates from Start/Done timings (Settings → Learning shows progress per type).
 - Clearer overload text and "past midnight" labels on the timeline.
 - 90 tests passing; browser smoke test of split and falling behind (caught a stale-time bug in the prompt, fixed).
+
+### Manual moves (done)
+- Long-press drag: drop on a date to move, drop on an assignment to reorder; confirmation when a move makes something late or no room that day; "moved" label and undo in the task.
+- The week strip is sticky so it's reachable while dragging.
+- 98 tests passing; drag-and-drop smoke tested in the browser.

@@ -4,7 +4,9 @@ import { addDays, at, dateKey } from '../core/time';
 import { occurrencesOn } from '../core/availability';
 import type { AppData } from './model';
 import { actions } from './model';
-import { commit } from './store';
+import { commit, getData } from './store';
+import { newlyLate } from './model';
+import { useDrag, type DropTarget } from './drag';
 import { useUI } from './ui';
 import { category, fmtDay, fmtDue, fmtDur, fmtTime, inputToMin, minToInput, TAG_LABELS } from './format';
 
@@ -57,6 +59,34 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
   const entries = entriesFor(data, day, now);
   const school = occurrencesOn(day, data.blocks, data.locations).find((o) => o.block.tag === 'school');
   const tasks = new Map(data.tasks.map((t) => [t.id, t]));
+  const onDrop = (id: string, target: DropTarget) => {
+    const cur = getData();
+    const n = Date.now();
+    let next: AppData;
+    const notes: string[] = [];
+    if ('day' in target) {
+      next = actions.moveToDay(cur, id, target.day, n);
+      const slot = next.plan?.items.find((i) => i.taskId === id);
+      if (slot && dateKey(slot.start) !== target.day) {
+        notes.push(`No room on ${fmtDay(target.day)}, so it goes to ${fmtDue(slot.start)}.`);
+      }
+    } else {
+      // Reorder this day's list: the dragged one takes the target's spot, the rest shift up or down.
+      const ids = entries.filter((e): e is Extract<Entry, { kind: 'task' }> => e.kind === 'task' && e.task.status === 'todo').map((e) => e.task.id);
+      const from = ids.indexOf(id);
+      const to = ids.indexOf(target.task);
+      if (from === -1 || to === -1) return;
+      ids.splice(from, 1);
+      ids.splice(to, 0, id);
+      next = actions.reorderDay(cur, day, ids, n);
+    }
+    const late = newlyLate(cur, next);
+    if (late.length) notes.push(`This makes ${late.map((t) => `"${t.title}"`).join(', ')} late.`);
+    if (notes.length && !confirm(`${notes.join(' ')} Move anyway?`)) return;
+    commit(() => next);
+  };
+  const dnd = useDrag(onDrop);
+
   const countFor = (k: DateKey) =>
     (data.plan?.items ?? []).filter((i) => dateKey(i.start) === k && tasks.get(i.taskId)?.status !== 'done').length;
 
@@ -86,7 +116,11 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
           ‹
         </button>
         {days.map((k) => (
-          <button class={`day ${k === day ? 'on' : ''} ${k === today ? 'today' : ''}`} onClick={() => setDay(k)}>
+          <button
+            class={`day ${k === day ? 'on' : ''} ${k === today ? 'today' : ''} ${dnd.isOver({ day: k }) ? 'drop-over' : ''}`}
+            data-drop-day={k}
+            onClick={() => setDay(k)}
+          >
             <span>{fmtDay(k, { weekday: 'narrow' })}</span>
             <strong>{fmtDay(k, { day: 'numeric' })}</strong>
             <i>{countFor(k) || ''}</i>
@@ -153,9 +187,11 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
                 </div>
               </li>
             );
-          return <TaskEntry e={e} />;
+          return <TaskEntry e={e} dnd={dnd} />;
         })}
       </ol>
+      {dnd.ghost}
+      {dnd.drag && <div class="drag-hint">Drop on a date to move it there, or on another assignment to reorder</div>}
       {entries.filter((e) => e.kind === 'task').length === 0 && data.blocks.length > 0 && (
         <p class="muted center">No assignments scheduled this day.</p>
       )}
@@ -163,15 +199,20 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
   );
 }
 
-function TaskEntry({ e }: { e: Extract<Entry, { kind: 'task' }> }) {
+function TaskEntry({ e, dnd }: { e: Extract<Entry, { kind: 'task' }>; dnd: ReturnType<typeof useDrag> }) {
   const ui = useUI();
   const t = e.task;
   const cat = category(t);
+  const drag = t.status === 'todo' ? dnd.bind(t.id, t.title) : null;
+  const open = () => ui.open({ kind: 'detail', id: t.id });
   return (
     <li
-      class={`entry task ${t.status} ${e.late ? 'late' : ''}`}
+      class={`entry task ${t.status} ${e.late ? 'late' : ''} ${dnd.drag?.id === t.id ? 'dragging' : ''} ${dnd.isOver({ task: t.id }) ? 'drop-over' : ''}`}
       style={{ '--cat': cat.color }}
-      onClick={() => ui.open({ kind: 'detail', id: t.id })}
+      data-drop-task={t.status === 'todo' ? t.id : undefined}
+      onPointerDown={drag?.onPointerDown}
+      onContextMenu={drag?.onContextMenu}
+      onClick={drag ? drag.guard(open) : open}
     >
       <time>
         {fmtTime(e.start)}
@@ -185,6 +226,7 @@ function TaskEntry({ e }: { e: Extract<Entry, { kind: 'task' }> }) {
         </div>
         <div class="muted small">
           {cat.label} · {fmtDur(t.estimateMin)} · {t.due === null ? 'missing, ASAP' : `due ${fmtDue(t.due)}`}
+          {t.pinDay ? ' · moved' : ''}
         </div>
         {e.late && <div class="warn small">Can't finish before it's due</div>}
         {e.night && !e.late && <div class="small night">Past midnight to finish on time</div>}
