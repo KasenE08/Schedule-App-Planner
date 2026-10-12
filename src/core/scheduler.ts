@@ -210,7 +210,16 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
     return { items, warnings };
   }
 
-  const todo = input.tasks.filter((t) => t.status === 'todo').sort(comparePriority);
+  // Hand-moved tasks get first claim on their day: by day, then hand order, then normal priority.
+  const byHand = (a: Task, b: Task) => {
+    const pa = pinOf(a);
+    const pb = pinOf(b);
+    if (pa && pb) return pa.localeCompare(pb) || (a.pinOrder ?? Infinity) - (b.pinOrder ?? Infinity) || comparePriority(a, b);
+    if (pa) return -1;
+    if (pb) return 1;
+    return comparePriority(a, b);
+  };
+  const todo = input.tasks.filter((t) => t.status === 'todo').sort(byHand);
   const r = greedy(todo, state, true);
   return { items: [...fixed, ...r.items], warnings: r.warnings };
 }

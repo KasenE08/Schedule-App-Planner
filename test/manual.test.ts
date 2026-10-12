@@ -28,6 +28,17 @@ describe('moving assignments by hand', () => {
     expect(at(d, 'big')).toBe(`${THU} 16:05`); // Wednesday's longest gap is 85 min
   });
 
+  it('dragging onto a full earlier day gives it first claim on that day; others shift', () => {
+    let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+    d = actions.saveTask(d, task({ id: 'x1', estimateMin: 135, due: T(TUE, '23:59') }), NOW); // fills 5:45–8:00pm
+    d = actions.saveTask(d, task({ id: 'x2', estimateMin: 145, due: T(TUE, '23:59') }), NOW); // fills 9:30–11:55pm
+    d = actions.saveTask(d, task({ id: 'w', estimateMin: 60, due: T(WED, '23:59') }), NOW);
+    expect(at(d, 'w').startsWith(TUE)).toBe(true); // Monday is full
+    d = actions.moveToDay(d, 'w', MON, NOW);
+    expect(at(d, 'w')).toBe(`${MON} 17:45`);
+    expect(d.plan!.warnings).toEqual([]); // the others still fit before they're due
+  });
+
   it('reordering a day puts them in the order arranged', () => {
     const d = actions.reorderDay(setup(), MON, ['b', 'a'], NOW);
     expect(at(d, 'b')).toBe(`${MON} 17:45`);
