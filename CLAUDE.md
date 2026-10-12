@@ -51,7 +51,7 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - The plan is **saved**, not recalculated live. It is recalculated when a task is added, edited, deleted, started or reopened, when the arrival time or any setting changes, and automatically on the first open of a new day. Done and notes never move anything (finishing early = free time).
 - On school days after school ends, the Schedule screen shows **I'm home now** until an arrival time is set; one tap sets the arrival to the current minute (the time box still allows any time). No arrival notification, by the user's choice.
 - Data is stored in localStorage on the phone. Backups are JSON files (`app: "schedule-app-planner"`) and can be exported and imported in Settings.
-- Offline: `vite.config.ts` writes `sw.js`, which precaches every built file.
+- Offline: `vite.config.ts` writes `sw.js`, which precaches every built file (bypassing the HTTP cache), fetches the page with `no-cache` so page and assets match, and keeps a copy of any asset it fetches. Deploys keep old `assets/` on `gh-pages` so a phone mid-update never gets a missing stylesheet (that happened once after rapid deploys).
 
 ## Notifications (replaced the Reminders sync)
 - The PWA can't schedule local notifications on iOS, so a free **Cloudflare Worker** (`worker/`) sends Web Push at each task's start time.
