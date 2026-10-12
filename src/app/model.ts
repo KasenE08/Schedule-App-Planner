@@ -104,15 +104,6 @@ export function newlyLate(before: AppData, after: AppData): Task[] {
   return after.tasks.filter((t) => now.has(t.id) && !was.has(t.id));
 }
 
-/**
- * The day a time belongs to on the schedule: until the latest night time (2am) it still counts
- * as the evening before, so work at 12:30am shows under "tonight", not the next date.
- */
-export function planDay(t: Ms, settings: Settings): DateKey {
-  const k = dateKey(t);
-  return t < at(k, settings.latestNightMin) ? addDays(k, -1) : k;
-}
-
 /** Tonight's extra time: from the normal day end until the latest allowed (default 12am–2am). */
 export function nightWindow(d: AppData, now: Ms): { start: Ms; end: Ms } {
   const today = dateKey(now);

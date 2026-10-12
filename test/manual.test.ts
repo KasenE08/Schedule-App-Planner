@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actions, emptyData, newlyLate, planDay, replan } from '../src/app/model';
+import { actions, emptyData, newlyLate, replan } from '../src/app/model';
 import { BLOCKS, LOCATIONS, MON, TUE, WED, THU, FRI, T, fmt, task } from './fixtures';
 
 const NOW = T(MON, '15:00');
@@ -69,14 +69,6 @@ describe('moving assignments by hand', () => {
     const after = actions.moveToDay(before, 'a', WED, NOW); // a is due Tuesday
     expect(newlyLate(before, after).map((t) => t.id)).toEqual(['a']);
     expect(newlyLate(before, actions.moveToDay(before, 'b', WED, NOW))).toEqual([]);
-  });
-
-  it('work between 12am and 2am counts as the night before on the schedule', () => {
-    const s = emptyData().settings;
-    expect(planDay(T(TUE, '00:30'), s)).toBe(MON);
-    expect(planDay(T(TUE, '01:59'), s)).toBe(MON);
-    expect(planDay(T(TUE, '02:00'), s)).toBe(TUE);
-    expect(planDay(T(MON, '23:00'), s)).toBe(MON);
   });
 
   it('skipping the break lets a task start right after the one before it', () => {
