@@ -5,7 +5,7 @@ import { occurrencesOn } from '../core/availability';
 import type { AppData } from './model';
 import { actions } from './model';
 import { commit, getData } from './store';
-import { newlyLate } from './model';
+import { fixLateness, newlyLate } from './model';
 import { useDrag, type DropTarget } from './drag';
 import { choose } from './dialog';
 import { useUI } from './ui';
@@ -81,22 +81,26 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
       ids.splice(to, 0, id);
       next = actions.reorderDay(cur, day, ids, n);
     }
-    const late = newlyLate(cur, next);
-    if (late.length) {
-      notes.push(`This makes ${late.map((t) => `"${t.title}"`).join(', ')} late.`);
-      // Offer skipping the 30-minute break if that gets everything done on time.
-      const noBreak = actions.setNoBreak(next, [id, ...late.map((t) => t.id)], true, n);
-      if (newlyLate(cur, noBreak).length === 0) {
-        const pick = await choose(`${notes.join(' ')} Skipping the break before it would finish it on time.`, [
-          'Skip the break',
-          'Move anyway (late)',
-          'Cancel',
-        ]);
-        if (pick === 0) commit(() => noBreak);
-        else if (pick === 1) commit(() => next);
-        return;
-      }
+    // If anything ends up late, offer the smallest help that gets it done on time.
+    const fix = fixLateness(next, id, n, 'day' in target ? target.day === dateKey(n) : day === dateKey(n));
+    if (fix) {
+      const allOnTime = fix.data.plan!.items.every((i) => !i.late);
+      const how = fix.skipBreak && fix.night
+        ? 'Skipping the break and working past midnight (until 2am)'
+        : fix.skipBreak
+          ? 'Skipping the 30-minute break'
+          : 'Working past midnight (until 2am)';
+      const lateNow = next.tasks.filter((t) => next.plan!.items.some((i) => i.taskId === t.id && i.late));
+      const pick = await choose(
+        `${lateNow.map((t) => `"${t.title}"`).join(', ')} would be late. ${how} gets ${allOnTime ? 'everything' : 'more'} done on time.`,
+        [fix.skipBreak && fix.night ? 'Skip break & work late' : fix.skipBreak ? 'Skip the break' : 'Work past midnight', 'Move anyway (late)', 'Cancel'],
+      );
+      if (pick === 0) commit(() => fix.data);
+      else if (pick === 1) commit(() => next);
+      return;
     }
+    const late = newlyLate(cur, next);
+    if (late.length) notes.push(`This makes ${late.map((t) => `"${t.title}"`).join(', ')} late.`);
     if (notes.length && !confirm(`${notes.join(' ')} Move anyway?`)) return;
     commit(() => next);
   };

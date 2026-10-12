@@ -96,6 +96,41 @@ export function replan(d: AppData, now: Ms, exactStart?: Ms): AppData {
   return { ...d, night, plan: { at: now, ...r } };
 }
 
+const lateSet = (d: AppData) => {
+  const ids = new Set(d.plan?.items.filter((i) => i.late).map((i) => i.taskId));
+  for (const w of d.plan?.warnings ?? []) if (w.kind === 'unscheduled') ids.add(w.taskId);
+  return ids;
+};
+
+export interface LateFix {
+  data: AppData;
+  skipBreak: boolean;
+  night: boolean;
+}
+
+/**
+ * After a hand move leaves tasks late, finds the smallest help that gets more of them on time:
+ * skipping the 30-minute break before the moved and late tasks, unlocking tonight's late window
+ * (until 2am, only when the move targets today), or both. Null when nothing helps.
+ */
+export function fixLateness(next: AppData, movedId: string, now: Ms, tonight: boolean): LateFix | null {
+  const late = lateSet(next);
+  if (!late.size) return null;
+  const ids = [movedId, ...late];
+  const night = nightWindow(next, now);
+  const tries: LateFix[] = [{ data: actions.setNoBreak(next, ids, true, now), skipBreak: true, night: false }];
+  if (tonight) {
+    tries.push({ data: replan({ ...next, night }, now), skipBreak: false, night: true });
+    tries.push({ data: actions.setNoBreak({ ...next, night }, ids, true, now), skipBreak: true, night: true });
+  }
+  let best: LateFix | null = null;
+  for (const t of tries) {
+    const n = lateSet(t.data).size;
+    if (n < late.size && (!best || n < lateSet(best.data).size)) best = t;
+  }
+  return best;
+}
+
 /** Tasks late in `after` that weren't late in `before`: what a move would newly make late. */
 export function newlyLate(before: AppData, after: AppData): Task[] {
   const was = new Set(before.plan?.items.filter((i) => i.late).map((i) => i.taskId));
@@ -148,7 +183,8 @@ export const actions = {
    * from now. Tonight may run past the day end (until 2am) but only for tasks that would otherwise be late.
    */
   fallingBehind(d: AppData, now: Ms): AppData {
-    return replan({ ...d, night: nightWindow(d, now) }, now, now + 5 * MIN);
+    // Whole minutes: tapping at 6:03:27 starts the first task at 6:08, not 6:10.
+    return replan({ ...d, night: nightWindow(d, now) }, now, Math.floor(now / MIN) * MIN + 5 * MIN);
   },
   /** Dragged onto a day: schedule it that day (or the next with room) and keep it there until undone. */
   moveToDay(d: AppData, id: string, day: DateKey, now: Ms): AppData {

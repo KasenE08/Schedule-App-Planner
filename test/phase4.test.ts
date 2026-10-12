@@ -21,6 +21,11 @@ describe('falling behind', () => {
     expect(startOf(d.plan!, 'b')).toBe(`${MON} 19:25`); // 18:53 + 30 min break, then the 5-minute grid
   });
 
+  it('seconds on the clock are ignored (6:03:27 → 6:08)', () => {
+    const d = actions.fallingBehind(actions.saveTask(base(T(MON, '15:00')), task({ id: 'a', estimateMin: 30 }), T(MON, '15:00')), T(MON, '18:03') + 27_000);
+    expect(startOf(d.plan!, 'a')).toBe(`${MON} 18:08`);
+  });
+
   it('what no longer fits today moves to the next free time, by priority', () => {
     let d = base(T(MON, '15:00'));
     d = actions.saveTask(d, task({ id: 'soon', estimateMin: 60, due: T(TUE, '23:59') }), T(MON, '15:00'));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { actions, emptyData, newlyLate, replan } from '../src/app/model';
-import { BLOCKS, LOCATIONS, MON, TUE, WED, THU, FRI, T, fmt, task } from './fixtures';
+import { actions, emptyData, fixLateness, newlyLate, nightWindow, replan } from '../src/app/model';
+import { BLOCKS, LOCATIONS, MON, TUE, WED, THU, FRI, SUN, T, fmt, task } from './fixtures';
 
 const NOW = T(MON, '15:00');
 const setup = () => {
@@ -82,5 +82,50 @@ describe('moving assignments by hand', () => {
     expect(d.plan!.warnings).toEqual([]);
     d = actions.setNoBreak(d, ['y'], false, NOW); // restore break
     expect(d.plan!.items.find((i) => i.taskId === 'y')!.late).toBe(true);
+  });
+
+  describe('bringing an assignment back to tonight so it makes its deadline', () => {
+    // Sunday 11:30pm, two 35-minute Packet Tracers both due Monday 1:00am (like the real case).
+    const MON2 = '2026-10-19';
+    const LATE_NOW = T(SUN, '23:30');
+    const due = T(MON2, '01:00');
+    const tonight = (withNight: boolean) => {
+      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, LATE_NOW);
+      if (withNight) d = { ...d, night: nightWindow(d, LATE_NOW) };
+      d = actions.saveTask(d, task({ id: 'a', title: '10.3.4', estimateMin: 35, due, pinDay: SUN }), LATE_NOW);
+      d = actions.saveTask(d, task({ id: 'b', title: '10.4.3', estimateMin: 35, due }), LATE_NOW);
+      return d;
+    };
+
+    it('with tonight already unlocked, skipping the break gets it in on time', () => {
+      const next = actions.moveToDay(tonight(true), 'b', SUN, LATE_NOW);
+      expect(next.plan!.items.find((i) => i.taskId === 'b')!.late).toBe(true); // 12:45–1:20am with the break
+      const fix = fixLateness(next, 'b', LATE_NOW, true)!;
+      expect(fix).toMatchObject({ skipBreak: true, night: false });
+      expect(at(fix.data, 'a')).toBe(`${SUN} 23:30`);
+      expect(at(fix.data, 'b')).toBe(`${MON2} 00:05`); // right after a, done 12:40am
+      expect(fix.data.plan!.warnings).toEqual([]);
+    });
+
+    it('without tonight unlocked, it offers skipping the break and working past midnight', () => {
+      const next = actions.moveToDay(tonight(false), 'b', SUN, LATE_NOW);
+      const fix = fixLateness(next, 'b', LATE_NOW, true)!;
+      expect(fix.night).toBe(true);
+      expect(fix.data.plan!.warnings).toEqual([]);
+      expect(fix.data.plan!.items.every((i) => i.end <= T(MON2, '02:00'))).toBe(true);
+    });
+
+    it('never offers past midnight when the move is not onto today', () => {
+      const next = actions.moveToDay(tonight(false), 'b', SUN, LATE_NOW);
+      expect(fixLateness(next, 'b', LATE_NOW, false)?.night ?? false).toBe(false);
+    });
+
+    it('offers nothing when nothing is late, or when nothing can help', () => {
+      const ok = actions.moveToDay(setup(), 'b', WED, NOW);
+      expect(fixLateness(ok, 'b', NOW, false)).toBeNull();
+      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+      d = actions.saveTask(d, task({ id: 'z', estimateMin: 60, due: T(MON, '16:00') }), NOW); // no free time before 4pm
+      expect(fixLateness(d, 'z', NOW, true)).toBeNull();
+    });
   });
 });
