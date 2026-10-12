@@ -5,7 +5,7 @@ import { occurrencesOn } from '../core/availability';
 import type { AppData } from './model';
 import { actions } from './model';
 import { commit, getData } from './store';
-import { newlyLate } from './model';
+import { newlyLate, planDay } from './model';
 import { useDrag, type DropTarget } from './drag';
 import { useUI } from './ui';
 import { category, fmtDay, fmtDue, fmtDur, fmtTime, inputToMin, minToInput, TAG_LABELS } from './format';
@@ -20,6 +20,8 @@ function entriesFor(d: AppData, key: DateKey, now: Ms): Entry[] {
   const dayStart = at(key, 0);
   const dayEnd = at(addDays(key, 1), 0);
   const inDay = (t: Ms) => t >= dayStart && t < dayEnd;
+  // Tasks and the now line follow the schedule day (12am–2am belongs to the night before).
+  const onPlanDay = (t: Ms) => planDay(t, d.settings) === key;
   const locs = new Map(d.locations.map((l) => [l.id, l]));
   const tasks = new Map(d.tasks.map((t) => [t.id, t]));
   const out: Entry[] = [];
@@ -41,17 +43,17 @@ function entriesFor(d: AppData, key: DateKey, now: Ms): Entry[] {
   }
   for (const i of d.plan?.items ?? []) {
     const task = tasks.get(i.taskId);
-    if (task && inDay(i.start)) out.push({ kind: 'task', start: i.start, end: i.end, task, late: i.late, night: i.night });
+    if (task && onPlanDay(i.start)) out.push({ kind: 'task', start: i.start, end: i.end, task, late: i.late, night: i.night });
   }
   for (const r of d.plan?.blockReminders ?? []) {
     if (inDay(r.at)) out.push({ kind: 'reminder', start: r.at, title: r.title });
   }
-  if (inDay(now)) out.push({ kind: 'now', start: now });
+  if (onPlanDay(now)) out.push({ kind: 'now', start: now });
   return out.sort((a, b) => a.start - b.start || (a.kind === 'now' ? -1 : b.kind === 'now' ? 1 : 0));
 }
 
 export function Today({ data, now }: { data: AppData; now: Ms }) {
-  const today = dateKey(now);
+  const today = planDay(now, data.settings);
   const [day, setDay] = useState<DateKey>(today);
   const [weekOffset, setWeekOffset] = useState(0);
   const ui = useUI();
@@ -67,7 +69,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
     if ('day' in target) {
       next = actions.moveToDay(cur, id, target.day, n);
       const slot = next.plan?.items.find((i) => i.taskId === id);
-      if (slot && dateKey(slot.start) !== target.day) {
+      if (slot && planDay(slot.start, cur.settings) !== target.day) {
         notes.push(`No room on ${fmtDay(target.day)}, so it goes to ${fmtDue(slot.start)}.`);
       }
     } else {
@@ -88,7 +90,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
   const dnd = useDrag(onDrop);
 
   const countFor = (k: DateKey) =>
-    (data.plan?.items ?? []).filter((i) => dateKey(i.start) === k && tasks.get(i.taskId)?.status !== 'done').length;
+    (data.plan?.items ?? []).filter((i) => planDay(i.start, data.settings) === k && tasks.get(i.taskId)?.status !== 'done').length;
 
   return (
     <div>

@@ -67,10 +67,17 @@ export function schedule(input: ScheduleInput): ScheduleResult {
   const plan = (allowNight: Set<string>) => run(input, allowNight);
   let result = plan(new Set());
   if (input.nightExtension) {
-    const late = lateIds(result);
-    if (late.size) {
-      const extended = plan(late);
+    // Unlock tonight's late hours for tasks that would be late; reshuffling can make others late,
+    // so widen the set a few times and keep the plan with the fewest late tasks.
+    let allow = new Set<string>();
+    for (let round = 0; round < 4; round++) {
+      const late = lateIds(result);
+      const next = new Set([...allow, ...late]);
+      if (next.size === allow.size) break;
+      allow = next;
+      const extended = plan(allow);
       if (lateIds(extended).size < late.size) result = extended;
+      else break;
     }
   }
   return { ...result, blockReminders: blockReminders(input) };
@@ -141,7 +148,10 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
     if (!placed?.size) return fit(from);
     // Spread parts: next part goes on a later day than the last placed one...
     const lastEnd = Math.max(...placed.values());
-    const spread = fit(Math.max(from, at(addDays(dateKey(lastEnd), 1), 0)));
+    // The next day starts at midnight, or after tonight's late window (12am–2am still counts as tonight).
+    let nextDay = at(addDays(dateKey(lastEnd), 1), 0);
+    for (const n of night) if (nextDay >= n.start && nextDay < n.end) nextDay = n.end;
+    const spread = fit(Math.max(from, nextDay));
     if (spread !== null && (t.due === null || spread + dur <= t.due)) return spread;
     // ...unless that makes it late; then the same day is allowed.
     const sameDay = fit(from);

@@ -44,6 +44,18 @@ describe('falling behind', () => {
     expect(r.warnings).toEqual([]);
   });
 
+  it('uses the late hours for whichever tasks need them, even ones a reshuffle made late', () => {
+    const due = T(TUE, '07:00');
+    const tasks = [
+      task({ id: 'p1', group: 'lab', part: 1, parts: 2, estimateMin: 60, formats: ['paper'], due }),
+      task({ id: 'p2', group: 'lab', part: 2, parts: 2, estimateMin: 60, formats: ['paper'], due }),
+      task({ id: 'r', estimateMin: 60, formats: ['paper'], due }),
+    ];
+    const r = schedule(input(T(MON, '21:20'), tasks, { nightExtension: NIGHT }));
+    expect(r.warnings).toEqual([]);
+    expect(r.items.every((i) => i.end <= T(TUE, '02:00'))).toBe(true);
+  });
+
   it('without falling-behind mode the same day stops at 12am and warns instead', () => {
     const tasks = [
       task({ id: 'a', estimateMin: 120, formats: ['paper'], due: T(TUE, '07:00') }),
