@@ -29,6 +29,14 @@ export function TaskDetail({ data, id }: { data: AppData; id: string }) {
         <dt>Status</dt>
         <dd>{statusText(t)}</dd>
       </dl>
+      {t.noBreakBefore && (
+        <p class="small">
+          Starts right after the one before it (break skipped).{' '}
+          <button class="link" onClick={() => commit((d, now) => actions.setNoBreak(d, [id], false, now))}>
+            Restore break
+          </button>
+        </p>
+      )}
       {t.pinDay && (
         <p class="small">
           Moved by hand to {fmtDay(t.pinDay)}.{' '}

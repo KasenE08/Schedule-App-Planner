@@ -139,7 +139,7 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
   };
 
   const gap = (p: Prev | null, t: Task) => {
-    if (!p) return 0;
+    if (!p || t.noBreakBefore) return 0;
     return p.short && !p.paired && isShort(t) ? s.shortPairBreakMin : s.breakMin;
   };
   const baseFrom = (t: Task, st: State) => (st.prev ? Math.max(st.floor, st.prev.end + gap(st.prev, t) * MIN) : st.floor);

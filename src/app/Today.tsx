@@ -7,6 +7,7 @@ import { actions } from './model';
 import { commit, getData } from './store';
 import { newlyLate, planDay } from './model';
 import { useDrag, type DropTarget } from './drag';
+import { choose } from './dialog';
 import { useUI } from './ui';
 import { category, fmtDay, fmtDue, fmtDur, fmtTime, inputToMin, minToInput, TAG_LABELS } from './format';
 
@@ -61,7 +62,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
   const entries = entriesFor(data, day, now);
   const school = occurrencesOn(day, data.blocks, data.locations).find((o) => o.block.tag === 'school');
   const tasks = new Map(data.tasks.map((t) => [t.id, t]));
-  const onDrop = (id: string, target: DropTarget) => {
+  const onDrop = async (id: string, target: DropTarget) => {
     const cur = getData();
     const n = Date.now();
     let next: AppData;
@@ -83,7 +84,21 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
       next = actions.reorderDay(cur, day, ids, n);
     }
     const late = newlyLate(cur, next);
-    if (late.length) notes.push(`This makes ${late.map((t) => `"${t.title}"`).join(', ')} late.`);
+    if (late.length) {
+      notes.push(`This makes ${late.map((t) => `"${t.title}"`).join(', ')} late.`);
+      // Offer skipping the 30-minute break if that gets everything done on time.
+      const noBreak = actions.setNoBreak(next, [id, ...late.map((t) => t.id)], true, n);
+      if (newlyLate(cur, noBreak).length === 0) {
+        const pick = await choose(`${notes.join(' ')} Skipping the break before it would finish it on time.`, [
+          'Skip the break',
+          'Move anyway (late)',
+          'Cancel',
+        ]);
+        if (pick === 0) commit(() => noBreak);
+        else if (pick === 1) commit(() => next);
+        return;
+      }
+    }
     if (notes.length && !confirm(`${notes.join(' ')} Move anyway?`)) return;
     commit(() => next);
   };
@@ -229,6 +244,7 @@ function TaskEntry({ e, dnd }: { e: Extract<Entry, { kind: 'task' }>; dnd: Retur
         <div class="muted small">
           {cat.label} · {fmtDur(t.estimateMin)} · {t.due === null ? 'missing, ASAP' : `due ${fmtDue(t.due)}`}
           {t.pinDay ? ' · moved' : ''}
+          {t.noBreakBefore ? ' · no break' : ''}
         </div>
         {e.late && <div class="warn small">Can't finish before it's due</div>}
         {e.night && !e.late && <div class="small night">Past midnight to finish on time</div>}

@@ -130,6 +130,8 @@ export interface Task {
   pinDay?: DateKey;
   /** Hand-set order among tasks pinned to the same day (0 = first). */
   pinOrder?: number;
+  /** User chose to skip the break before this task so it finishes on time. */
+  noBreakBefore?: boolean;
   /** Parts of a split big task share a group; part is 1-based. */
   group?: string;
   part?: number;

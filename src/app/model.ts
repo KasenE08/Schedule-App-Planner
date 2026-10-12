@@ -169,6 +169,11 @@ export const actions = {
     const tasks = d.tasks.map((t) => (pos.has(t.id) ? { ...t, pinDay: day, pinOrder: pos.get(t.id) } : t));
     return replan({ ...d, tasks }, now);
   },
+  /** Skip (or restore) the break before these tasks. */
+  setNoBreak(d: AppData, ids: string[], on: boolean, now: Ms): AppData {
+    const set = new Set(ids);
+    return replan({ ...d, tasks: d.tasks.map((t) => (set.has(t.id) ? { ...t, noBreakBefore: on || undefined } : t)) }, now);
+  },
   /** "Let the app schedule it": drops a hand move. */
   unpin(d: AppData, id: string, now: Ms): AppData {
     return replan(patchTask(d, id, { pinDay: undefined, pinOrder: undefined }), now);

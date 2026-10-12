@@ -78,4 +78,17 @@ describe('moving assignments by hand', () => {
     expect(planDay(T(TUE, '02:00'), s)).toBe(TUE);
     expect(planDay(T(MON, '23:00'), s)).toBe(MON);
   });
+
+  it('skipping the break lets a task start right after the one before it', () => {
+    let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+    d = actions.saveTask(d, task({ id: 'x', estimateMin: 60, due: T(MON, '23:59') }), NOW);
+    d = actions.saveTask(d, task({ id: 'y', estimateMin: 60, due: T(MON, '20:00') }), NOW);
+    d = actions.reorderDay(d, MON, ['x', 'y'], NOW); // y now after x, needs the 30 min break
+    expect(d.plan!.items.find((i) => i.taskId === 'y')!.late).toBe(true);
+    d = actions.setNoBreak(d, ['y'], true, NOW);
+    expect(at(d, 'y')).toBe(`${MON} 18:45`);
+    expect(d.plan!.warnings).toEqual([]);
+    d = actions.setNoBreak(d, ['y'], false, NOW); // restore break
+    expect(d.plan!.items.find((i) => i.taskId === 'y')!.late).toBe(true);
+  });
 });
