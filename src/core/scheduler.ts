@@ -56,6 +56,16 @@ function cut(iv: Interval, busy: Interval): Interval[] {
 
 const lateIds = (r: Run) => new Set(r.items.filter((i) => i.late).map((i) => i.taskId));
 
+/** Fewer late tasks wins; with the same count, being less late in total wins. */
+function better(a: Run, b: Run, tasks: Task[]): boolean {
+  const la = lateIds(a).size;
+  const lb = lateIds(b).size;
+  if (la !== lb) return la < lb;
+  const due = new Map(tasks.map((t) => [t.id, t.due]));
+  const lateness = (r: Run) => r.items.reduce((sum, i) => sum + (i.late ? i.end - (due.get(i.taskId) ?? i.end) : 0), 0);
+  return lateness(a) < lateness(b);
+}
+
 /**
  * Places every unfinished task into free time, in priority order (due date, then category).
  * A lower-priority task may fill a gap first only if doing so never delays the top task.
@@ -76,7 +86,7 @@ export function schedule(input: ScheduleInput): ScheduleResult {
       if (next.size === allow.size) break;
       allow = next;
       const extended = plan(allow);
-      if (lateIds(extended).size < late.size) result = extended;
+      if (better(extended, result, input.tasks)) result = extended;
       else break;
     }
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { schedule } from '../src/core/scheduler';
 import { estimateMinutes, learnedRatio, splitMinutes, type DoneRecord } from '../src/core/estimate';
 import { actions, emptyData, nightWindow, replan } from '../src/app/model';
-import { BLOCKS, FRI, LOCATIONS, MON, TUE, WED, THU, T, fmt, input, task } from './fixtures';
+import { BLOCKS, FRI, LOCATIONS, MON, TUE, WED, THU, SUN, T, fmt, input, task } from './fixtures';
 import type { Task } from '../src/core/types';
 
 const startOf = (r: { items: { taskId: string; start: number }[] }, id: string) => {
@@ -54,6 +54,19 @@ describe('falling behind', () => {
     const r = schedule(input(T(MON, '21:20'), tasks, { nightExtension: NIGHT }));
     expect(r.warnings).toEqual([]);
     expect(r.items.every((i) => i.end <= T(TUE, '02:00'))).toBe(true);
+  });
+
+  it('if something will be late anyway, it goes right after tonight’s work, not the next afternoon', () => {
+    const MON2 = '2026-10-19';
+    const night = { start: T(MON2, '00:00'), end: T(MON2, '02:00') };
+    const tasks = [
+      task({ id: 'pinned', estimateMin: 35, due: T(MON2, '01:00'), pinDay: SUN }),
+      task({ id: 'midnight', estimateMin: 35, due: T(MON2, '00:00') }),
+    ];
+    const r = schedule(input(T(SUN, '23:22'), tasks, { nightExtension: night }));
+    expect(startOf(r, 'pinned')).toBe(`${SUN} 23:25`);
+    expect(startOf(r, 'midnight')).toBe(`${MON2} 00:30`); // still late, but by 1 hour instead of 16
+    expect(r.items.find((i) => i.taskId === 'midnight')!.late).toBe(true);
   });
 
   it('without falling-behind mode the same day stops at 12am and warns instead', () => {
