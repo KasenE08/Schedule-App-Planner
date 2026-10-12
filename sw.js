@@ -1,7 +1,8 @@
-const CACHE = 'planner-mv4p17mq';
+const CACHE = 'planner-mv4p49o9';
 const FILES = ["./","./assets/index-DSuywd5R.css","./assets/index-BGukC2qb.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // 'reload' skips the browser's HTTP cache so the saved copy matches this exact version.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -13,10 +14,14 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   if (e.request.mode === 'navigate') {
     // Network first so updates arrive; cached copy when offline.
-    e.respondWith(fetch(e.request).catch(() => caches.match('./')));
+    e.respondWith(fetch(e.request, { cache: 'no-cache' }).catch(() => caches.match('./')));
     return;
   }
-  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
+  // Saved copy first; otherwise fetch it and keep a copy (covers files from a page loaded just before an update).
+  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
+    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+    return res;
+  })));
 });
 self.addEventListener('push', (e) => {
   let n = {};
