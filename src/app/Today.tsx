@@ -65,6 +65,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
     const n = Date.now();
     let next: AppData;
     const notes: string[] = [];
+    const movedTitle = cur.tasks.find((t) => t.id === id)?.title ?? 'this';
     if ('day' in target) {
       next = actions.moveToDay(cur, id, target.day, n);
       const slot = next.plan?.items.find((i) => i.taskId === id);
@@ -91,7 +92,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
           ? 'Skipping the 30-minute break'
           : 'Working past midnight (until 2am)';
       const pick = await choose(
-        `${fix.tasks.map((t) => `"${t.title}"`).join(', ')} would be late. ${how} gets ${allOnTime ? 'it' : 'more'} done on time.`,
+        `Moving "${movedTitle}": ${fix.tasks.map((t) => `"${t.title}"`).join(', ')} would be late. ${how} gets ${allOnTime ? 'it' : 'more'} done on time.`,
         [fix.skipBreak && fix.night ? 'Skip break & work late' : fix.skipBreak ? 'Skip the break' : 'Work past midnight', 'Move anyway (late)', 'Cancel'],
       );
       if (pick === 0) commit(() => fix.data);
@@ -100,7 +101,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
     }
     const late = newlyLate(cur, next);
     if (late.length) notes.push(`This makes ${late.map((t) => `"${t.title}"`).join(', ')} late.`);
-    if (notes.length && !confirm(`${notes.join(' ')} Move anyway?`)) return;
+    if (notes.length && !confirm(`Moving "${movedTitle}": ${notes.join(' ')} Move anyway?`)) return;
     commit(() => next);
   };
   const dnd = useDrag(onDrop);

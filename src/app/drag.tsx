@@ -29,6 +29,8 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const live = useRef<Drag | null>(null);
   const suppressClick = useRef(false);
+  /** Pointer of the press in progress; any other finger or touch is ignored until it ends. */
+  const activePointer = useRef<number | null>(null);
   const dropRef = useRef(onDrop);
   dropRef.current = onDrop;
 
@@ -56,6 +58,10 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
   const bind = (id: string, title: string) => ({
     onPointerDown(e: PointerEvent) {
       if ((e.target as HTMLElement).closest('button')) return;
+      // Only one drag at a time, from the first finger: a second touch can't grab another assignment.
+      if (!e.isPrimary || activePointer.current !== null) return;
+      const pid = e.pointerId;
+      activePointer.current = pid;
       const sx = e.clientX;
       const sy = e.clientY;
       let x = sx;
@@ -65,6 +71,7 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
         setDrag(live.current);
       }, HOLD_MS);
       const move = (ev: PointerEvent) => {
+        if (ev.pointerId !== pid) return;
         x = ev.clientX;
         y = ev.clientY;
         if (!live.current) {
@@ -74,7 +81,8 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
         live.current = { ...live.current, x, y, over: targetAt(x, y, id) };
         setDrag(live.current);
       };
-      const up = () => {
+      const up = (ev: PointerEvent) => {
+        if (ev.pointerId !== pid) return;
         const d = live.current;
         end();
         if (d) {
@@ -89,9 +97,10 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
         removeEventListener('pointerup', up);
         removeEventListener('pointercancel', cancel);
         live.current = null;
+        activePointer.current = null;
         setDrag(null);
       };
-      const cancel = () => end();
+      const cancel = (ev: PointerEvent) => ev.pointerId === pid && end();
       addEventListener('pointermove', move);
       addEventListener('pointerup', up);
       addEventListener('pointercancel', cancel);
