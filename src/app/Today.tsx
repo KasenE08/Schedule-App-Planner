@@ -82,17 +82,16 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
       next = actions.reorderDay(cur, day, ids, n);
     }
     // If anything ends up late, offer the smallest help that gets it done on time.
-    const fix = fixLateness(next, id, n, 'day' in target ? target.day === dateKey(n) : day === dateKey(n));
+    const fix = fixLateness(cur, next, id, n, 'day' in target ? target.day === dateKey(n) : day === dateKey(n));
     if (fix) {
-      const allOnTime = fix.data.plan!.items.every((i) => !i.late);
+      const allOnTime = fix.tasks.every((t) => !fix.data.plan!.items.some((i) => i.taskId === t.id && i.late));
       const how = fix.skipBreak && fix.night
         ? 'Skipping the break and working past midnight (until 2am)'
         : fix.skipBreak
           ? 'Skipping the 30-minute break'
           : 'Working past midnight (until 2am)';
-      const lateNow = next.tasks.filter((t) => next.plan!.items.some((i) => i.taskId === t.id && i.late));
       const pick = await choose(
-        `${lateNow.map((t) => `"${t.title}"`).join(', ')} would be late. ${how} gets ${allOnTime ? 'everything' : 'more'} done on time.`,
+        `${fix.tasks.map((t) => `"${t.title}"`).join(', ')} would be late. ${how} gets ${allOnTime ? 'it' : 'more'} done on time.`,
         [fix.skipBreak && fix.night ? 'Skip break & work late' : fix.skipBreak ? 'Skip the break' : 'Work past midnight', 'Move anyway (late)', 'Cancel'],
       );
       if (pick === 0) commit(() => fix.data);

@@ -106,29 +106,38 @@ export interface LateFix {
   data: AppData;
   skipBreak: boolean;
   night: boolean;
+  /** The tasks this help is about: the moved one and any the move made late. */
+  tasks: Task[];
 }
 
 /**
- * After a hand move leaves tasks late, finds the smallest help that gets more of them on time:
- * skipping the 30-minute break before the moved and late tasks, unlocking tonight's late window
- * (until 2am, only when the move targets today), or both. Null when nothing helps.
+ * After a hand move, looks only at the moved task and tasks the move newly made late (work that was
+ * already late beforehand is left to the overload banner). Finds the smallest help that gets more of
+ * them on time: skip the 30-minute break before them, unlock tonight's late window (until 2am, only
+ * when the move targets today), or both. Null when none of them is late or nothing helps.
  */
-export function fixLateness(next: AppData, movedId: string, now: Ms, tonight: boolean): LateFix | null {
-  const late = lateSet(next);
-  if (!late.size) return null;
-  const ids = [movedId, ...late];
+export function fixLateness(before: AppData, next: AppData, movedId: string, now: Ms, tonight: boolean): LateFix | null {
+  const wasLate = lateSet(before);
+  const relevant = [...lateSet(next)].filter((id) => id === movedId || !wasLate.has(id));
+  if (!relevant.length) return null;
+  const count = (d: AppData) => {
+    const late = lateSet(d);
+    return { relevant: relevant.filter((id) => late.has(id)).length, others: [...late].filter((id) => !wasLate.has(id) && !relevant.includes(id)).length };
+  };
+  const ids = [movedId, ...relevant];
   const night = nightWindow(next, now);
-  const tries: LateFix[] = [{ data: actions.setNoBreak(next, ids, true, now), skipBreak: true, night: false }];
+  const tries = [{ data: actions.setNoBreak(next, ids, true, now), skipBreak: true, night: false }];
   if (tonight) {
     tries.push({ data: replan({ ...next, night }, now), skipBreak: false, night: true });
     tries.push({ data: actions.setNoBreak({ ...next, night }, ids, true, now), skipBreak: true, night: true });
   }
-  let best: LateFix | null = null;
+  let best: (typeof tries)[number] | null = null;
   for (const t of tries) {
-    const n = lateSet(t.data).size;
-    if (n < late.size && (!best || n < lateSet(best.data).size)) best = t;
+    const c = count(t.data);
+    // Must help the relevant tasks without making anything else newly late.
+    if (c.others === 0 && c.relevant < relevant.length && (!best || c.relevant < count(best.data).relevant)) best = t;
   }
-  return best;
+  return best && { ...best, tasks: next.tasks.filter((t) => relevant.includes(t.id)) };
 }
 
 /** Tasks late in `after` that weren't late in `before`: what a move would newly make late. */

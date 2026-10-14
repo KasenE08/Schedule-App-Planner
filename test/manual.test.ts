@@ -100,7 +100,7 @@ describe('moving assignments by hand', () => {
     it('with tonight already unlocked, skipping the break gets it in on time', () => {
       const next = actions.moveToDay(tonight(true), 'b', SUN, LATE_NOW);
       expect(next.plan!.items.find((i) => i.taskId === 'b')!.late).toBe(true); // 12:45–1:20am with the break
-      const fix = fixLateness(next, 'b', LATE_NOW, true)!;
+      const fix = fixLateness(tonight(true), next, 'b', LATE_NOW, true)!;
       expect(fix).toMatchObject({ skipBreak: true, night: false });
       expect(at(fix.data, 'a')).toBe(`${SUN} 23:30`);
       expect(at(fix.data, 'b')).toBe(`${MON2} 00:05`); // right after a, done 12:40am
@@ -109,7 +109,7 @@ describe('moving assignments by hand', () => {
 
     it('without tonight unlocked, it offers skipping the break and working past midnight', () => {
       const next = actions.moveToDay(tonight(false), 'b', SUN, LATE_NOW);
-      const fix = fixLateness(next, 'b', LATE_NOW, true)!;
+      const fix = fixLateness(tonight(false), next, 'b', LATE_NOW, true)!;
       expect(fix.night).toBe(true);
       expect(fix.data.plan!.warnings).toEqual([]);
       expect(fix.data.plan!.items.every((i) => i.end <= T(MON2, '02:00'))).toBe(true);
@@ -117,15 +117,26 @@ describe('moving assignments by hand', () => {
 
     it('never offers past midnight when the move is not onto today', () => {
       const next = actions.moveToDay(tonight(false), 'b', SUN, LATE_NOW);
-      expect(fixLateness(next, 'b', LATE_NOW, false)?.night ?? false).toBe(false);
+      expect(fixLateness(tonight(false), next, 'b', LATE_NOW, false)?.night ?? false).toBe(false);
     });
 
     it('offers nothing when nothing is late, or when nothing can help', () => {
       const ok = actions.moveToDay(setup(), 'b', WED, NOW);
-      expect(fixLateness(ok, 'b', NOW, false)).toBeNull();
+      expect(fixLateness(setup(), ok, 'b', NOW, false)).toBeNull();
       let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
       d = actions.saveTask(d, task({ id: 'z', estimateMin: 60, due: T(MON, '16:00') }), NOW); // no free time before 4pm
-      expect(fixLateness(d, 'z', NOW, true)).toBeNull();
+      expect(fixLateness(d, d, 'z', NOW, true)).toBeNull();
+    });
+
+    it('ignores a different assignment that was already late before the move', () => {
+      // The real case: moving "Activity List" to Thursday while "Counselor transcript" is already late today.
+      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+      d = actions.saveTask(d, task({ id: 'transcript', title: 'Send counselor transcript', estimateMin: 30, due: T(MON, '16:00') }), NOW);
+      d = actions.saveTask(d, task({ id: 'activity', title: 'Activity list descriptions', estimateMin: 45, due: T(FRI, '23:59') }), NOW);
+      expect(d.plan!.items.find((i) => i.taskId === 'transcript')!.late).toBe(true); // already late
+      const next = actions.moveToDay(d, 'activity', THU, NOW);
+      expect(newlyLate(d, next)).toEqual([]);
+      expect(fixLateness(d, next, 'activity', NOW, false)).toBeNull();
     });
   });
 });
