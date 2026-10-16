@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import type { DateKey, Ms, Task } from '../core/types';
+import type { BlockTag, DateKey, Ms, Task } from '../core/types';
 import { addDays, at, dateKey } from '../core/time';
 import { occurrencesOn } from '../core/availability';
 import type { AppData } from './model';
@@ -7,12 +7,14 @@ import { actions } from './model';
 import { commit, getData } from './store';
 import { fixLateness, newlyLate } from './model';
 import { useDrag, type DropTarget } from './drag';
+import { CATEGORY_ICONS, Icon, TAG_STYLE } from './icons';
+import { categoryRank } from '../core/priority';
 import { choose } from './dialog';
 import { useUI } from './ui';
 import { category, fmtDay, fmtDue, fmtDur, fmtTime, inputToMin, minToInput, TAG_LABELS } from './format';
 
 type Entry =
-  | { kind: 'block'; start: Ms; end: Ms; title: string; sub: string; soft: boolean; tag: string }
+  | { kind: 'block'; start: Ms; end: Ms; title: string; sub: string; soft: boolean; tag: string; tagKey: BlockTag }
   | { kind: 'task'; start: Ms; end: Ms; task: Task; late: boolean; night?: boolean }
   | { kind: 'reminder'; start: Ms; title: string }
   | { kind: 'now'; start: Ms };
@@ -38,6 +40,7 @@ function entriesFor(d: AppData, key: DateKey, now: Ms): Entry[] {
         .join(' · '),
       soft: o.block.blocksScheduling === false,
       tag: TAG_LABELS[o.block.tag],
+      tagKey: o.block.tag,
     });
   }
   for (const i of d.plan?.items ?? []) {
@@ -123,7 +126,7 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
             </button>
           )}
           <button class="btn small" onClick={() => ui.open({ kind: 'block', once: true })}>
-            + Event
+            <Icon name="plus" size={16} /> Event
           </button>
         </div>
       </header>
@@ -131,8 +134,8 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
       {data.push?.error && <div class="card small warn">Notifications: {data.push.error}</div>}
 
       <div class="week">
-        <button class="link" aria-label="Previous week" disabled={weekOffset === 0} onClick={() => setWeekOffset(weekOffset - 1)}>
-          ‹
+        <button class="icon-btn" aria-label="Previous week" disabled={weekOffset === 0} onClick={() => setWeekOffset(weekOffset - 1)}>
+          <Icon name="chevronLeft" />
         </button>
         {days.map((k) => (
           <button
@@ -142,11 +145,11 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
           >
             <span>{fmtDay(k, { weekday: 'narrow' })}</span>
             <strong>{fmtDay(k, { day: 'numeric' })}</strong>
-            <i>{countFor(k) || ''}</i>
+            <i class={countFor(k) ? 'has' : ''} aria-label={countFor(k) ? `${countFor(k)} assignments` : undefined}>{countFor(k) || ''}</i>
           </button>
         ))}
-        <button class="link" aria-label="Next week" onClick={() => setWeekOffset(weekOffset + 1)}>
-          ›
+        <button class="icon-btn" aria-label="Next week" onClick={() => setWeekOffset(weekOffset + 1)}>
+          <Icon name="chevronRight" />
         </button>
       </div>
 
@@ -188,24 +191,26 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
           if (e.kind === 'reminder')
             return (
               <li class="entry reminder">
-                <time>{fmtTime(e.start)}</time>
-                <div class="body">⏰ {e.title}</div>
+                <Icon name="bell" size={16} />
+                <span class="time">{fmtTime(e.start)}</span>
+                <span>{e.title}</span>
               </li>
             );
-          if (e.kind === 'block')
+          if (e.kind === 'block') {
+            const st = TAG_STYLE[e.tagKey];
             return (
-              <li class={`entry block ${e.soft ? 'soft' : ''}`}>
-                <time>
-                  {fmtTime(e.start)}
-                  <br />
-                  <span class="muted">{fmtTime(e.end)}</span>
-                </time>
+              <li class={`entry block ${e.soft ? 'soft' : ''}`} style={{ '--cat': st.color }}>
+                <span class="chip-icon"><Icon name={st.icon} /></span>
                 <div class="body">
                   <div class="title">{e.title}</div>
-                  <div class="muted small">{[e.tag, e.sub].filter(Boolean).join(' · ')}</div>
+                  <div class="meta">
+                    {fmtTime(e.start)} – {fmtTime(e.end)}
+                    {e.sub ? ` · ${e.sub}` : ''}
+                  </div>
                 </div>
               </li>
             );
+          }
           return <TaskEntry e={e} dnd={dnd} />;
         })}
       </ol>
@@ -233,18 +238,16 @@ function TaskEntry({ e, dnd }: { e: Extract<Entry, { kind: 'task' }>; dnd: Retur
       onContextMenu={drag?.onContextMenu}
       onClick={drag ? drag.guard(open) : open}
     >
-      <time>
-        {fmtTime(e.start)}
-        <br />
-        <span class="muted">{fmtTime(e.end)}</span>
-      </time>
+      <span class="chip-icon">
+        <Icon name={t.status === 'done' ? 'check' : CATEGORY_ICONS[categoryRank(t)]} />
+      </span>
       <div class="body">
-        <div class="title">
-          {t.status === 'done' && '✓ '}
-          {t.title}
+        <div class="title">{t.title}</div>
+        <div class="meta">
+          {fmtTime(e.start)} – {fmtTime(e.end)} · {cat.label} · {fmtDur(t.estimateMin)}
         </div>
-        <div class="muted small">
-          {cat.label} · {fmtDur(t.estimateMin)} · {t.due === null ? 'missing, ASAP' : `due ${fmtDue(t.due)}`}
+        <div class="meta">
+          {t.due === null ? 'Missing, ASAP' : `Due ${fmtDue(t.due)}`}
           {t.pinDay ? ' · moved' : ''}
           {t.noBreakBefore ? ' · no break' : ''}
         </div>
@@ -273,7 +276,7 @@ function Warnings({ data }: { data: AppData }) {
   if (!list.length) return null;
   return (
     <div class="card overload">
-      <strong>Overload</strong>
+      <strong><Icon name="alert" size={16} /> Overload</strong>
       {list.map((w) => {
         const t = tasks.get(w.taskId)!;
         return (

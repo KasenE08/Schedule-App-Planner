@@ -68,7 +68,11 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - `worker/` holds the notification server: `src/hub.ts` (logic, unit tested with fake storage and fetch) and `src/index.ts` (Cloudflare entry and the Durable Object).
 - `test/` holds the Vitest suites; `fixtures.ts` is a sample week with generic place names.
 - `.github/workflows/deploy.yml`: every push to `main` runs the checks, builds, and publishes `dist/` to the `gh-pages` branch. Pages serves `gh-pages`.
-- `scripts/icon.svg` is the app icon (green calendar with a checklist); `scripts/make-icons.mjs` renders it to `public/icon-*.png` with Playwright.
+- `scripts/icon-source.png` is the app icon artwork (glowing pastel calendar with a plus, supplied by the user); `scripts/make-icons.mjs` renders it to `public/icon-*.png` with Playwright.
+- `src/app/icons.tsx` holds the inline SVG icon set plus `TAG_STYLE` (icon and pastel per fixed-time kind) and `CATEGORY_ICONS`.
+
+## Design system
+Dark navy + soft pastels, from the user's mood board. Tokens live at the top of `styles.css`: backgrounds `--bg #0B0F18`, `--bg-2 #101725`, `--surface #182233`, border `#29364D`, text `#F1F3FF` / `#9BA8C0`, pastels lavender `#C9B8FF`, periwinkle `#8C9FFF`, blue `#8EC5FF`, mint `#A7F3D0`, peach `#FFBFA7`, pink `#FFB4E6`. Primary actions use the lavender→periwinkle gradient. Categories: Online blue, Online·Missing peach, Paper mint, Paper·Missing pink, Other lavender. Cards are pastel-tinted (`color-mix`) with an icon chip; radii 10/14/18/24. Bottom bar: Schedule, Tasks, center **+**, Settings. Sheets have a ✕ close and a full-width Save. Checkboxes render as switches; Tasks rows have round checkboxes that finish/reopen a task.
 
 ## Commands
 `npm run check` (typecheck + tests) · `npm run dev` · `npm run build`
@@ -120,3 +124,7 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - Bringing an assignment back to an earlier day (e.g. tonight) offers skipping the break and/or working until 2am when that makes the deadline.
 - Fixed Falling behind ignoring seconds (6:10 instead of 6:08) and an unstyled load after rapid deploys (old assets now kept, service worker hardened).
 - 107 unit tests; 14-step end-to-end browser test of styles, auto order, reorder, skip break, move to later/earlier day, restore break, tonight rescue and falling behind, all passing.
+
+### UI redesign (on dev, awaiting approval)
+- Full restyle to the pastel dark mood board and the new app icon; no behavior changes. Tasks screen gained To do / Completed tabs and round checkboxes (using the existing complete/reopen actions).
+- 108 unit tests and the 14-step end-to-end test pass; offline and two-touch drag checks pass.

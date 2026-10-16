@@ -3,6 +3,8 @@ import { actions, type AppData } from './model';
 import { commit } from './store';
 import { Field, SheetFrame, useUI } from './ui';
 import { category, fmtDay, fmtDue, fmtDur, fmtTime, TYPE_LABELS } from './format';
+import { CATEGORY_ICONS, Icon } from './icons';
+import { categoryRank } from '../core/priority';
 
 export function TaskDetail({ data, id }: { data: AppData; id: string }) {
   const ui = useUI();
@@ -16,19 +18,29 @@ export function TaskDetail({ data, id }: { data: AppData; id: string }) {
   return (
     <SheetFrame title="Assignment">
       <div class="detail-head" style={{ '--cat': cat.color }}>
+        <span class="chip-icon lg"><Icon name={CATEGORY_ICONS[categoryRank(t)]} size={26} /></span>
         <h2>{t.title}</h2>
-        <div class="muted">
+        <div class="meta">
           {cat.label} · {TYPE_LABELS[t.type]} · {fmtDur(t.estimateMin)}
         </div>
       </div>
-      <dl class="facts">
-        <dt>Due</dt>
-        <dd>{t.due === null ? 'Missing: as soon as possible' : fmtDue(t.due)}</dd>
-        <dt>Do it</dt>
-        <dd>{slot ? `${fmtDue(slot.start)} – ${fmtTime(slot.end)}` : 'Not scheduled'}</dd>
-        <dt>Status</dt>
-        <dd>{statusText(t)}</dd>
-      </dl>
+      <div class="info-list">
+        <div class="info-row">
+          <Icon name="flag" />
+          <span class="info-label">Due</span>
+          <span>{t.due === null ? 'Missing: as soon as possible' : fmtDue(t.due)}</span>
+        </div>
+        <div class="info-row">
+          <Icon name="clock" />
+          <span class="info-label">Do it</span>
+          <span>{slot ? `${fmtDue(slot.start)} – ${fmtTime(slot.end)}` : 'Not scheduled'}</span>
+        </div>
+        <div class="info-row">
+          <Icon name="play" />
+          <span class="info-label">Status</span>
+          <span>{statusText(t)}</span>
+        </div>
+      </div>
       {t.noBreakBefore && (
         <p class="small">
           Starts right after the one before it (break skipped).{' '}
@@ -46,7 +58,10 @@ export function TaskDetail({ data, id }: { data: AppData; id: string }) {
         </p>
       )}
       {warning && (
-        <p class="warn">{warning.kind === 'late' ? "This can't be finished before it's due." : 'No free time fits this yet.'}</p>
+        <p class="callout warn">
+          <Icon name="alert" size={16} />
+          {warning.kind === 'late' ? "This can't be finished before it's due." : 'No free time fits this yet.'}
+        </p>
       )}
       <Field label="Notes">
         <textarea
@@ -75,7 +90,7 @@ export function TaskDetail({ data, id }: { data: AppData; id: string }) {
           </button>
         )}
         <button class="btn" onClick={() => ui.open({ kind: 'task', task: t })}>
-          Edit
+          <Icon name="edit" size={16} /> Edit
         </button>
         <button
           class="btn danger"
@@ -85,7 +100,7 @@ export function TaskDetail({ data, id }: { data: AppData; id: string }) {
             ui.close();
           }}
         >
-          Delete
+          <Icon name="trash" size={16} /> Delete
         </button>
       </div>
     </SheetFrame>

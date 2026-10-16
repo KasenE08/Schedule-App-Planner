@@ -9,12 +9,13 @@ import { TaskDetail } from './TaskDetail';
 import { BlockForm } from './BlockForm';
 import { NotifyGuide } from './NotifyGuide';
 import { useEffect } from 'preact/hooks';
+import { Icon, type IconName } from './icons';
 
 type Tab = 'today' | 'tasks' | 'settings';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'today', label: 'Schedule' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'settings', label: 'Settings' },
+const TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: 'today', label: 'Schedule', icon: 'calendar' },
+  { id: 'tasks', label: 'Tasks', icon: 'tasks' },
+  { id: 'settings', label: 'Settings', icon: 'settings' },
 ];
 
 export function App() {
@@ -44,15 +45,20 @@ export function App() {
         {tab === 'tasks' && <TaskList data={data} now={now} />}
         {tab === 'settings' && <Settings data={data} />}
       </main>
-      {tab !== 'settings' && (
-        <button class="fab" aria-label="Add assignment" onClick={() => setSheet({ kind: 'task' })}>
-          +
-        </button>
-      )}
       <nav class="tabbar">
-        {TABS.map((t) => (
+        {TABS.slice(0, 2).map((t) => (
           <button class={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
-            {t.label}
+            <Icon name={t.icon} size={22} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+        <button class="fab" aria-label="Add assignment" onClick={() => setSheet({ kind: 'task' })}>
+          <Icon name="plus" size={26} />
+        </button>
+        {TABS.slice(2).map((t) => (
+          <button class={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+            <Icon name={t.icon} size={22} />
+            <span>{t.label}</span>
           </button>
         ))}
       </nav>

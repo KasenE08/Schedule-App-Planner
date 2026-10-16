@@ -4,6 +4,7 @@ import { dateKey } from '../core/time';
 import { actions, exportBackup, parseBackup, type AppData } from './model';
 import { commit } from './store';
 import { Chips, useUI } from './ui';
+import { Icon, TAG_STYLE } from './icons';
 import { useState } from 'preact/hooks';
 import { disablePush, enablePush, pushSupported, sendTest, uploadNow } from './push';
 import { fmtMin, inputToMin, minToInput, recurrenceText, TAG_LABELS, TYPE_LABELS, uid, WEEKDAYS } from './format';
@@ -21,12 +22,16 @@ export function Settings({ data }: { data: AppData }) {
     .sort((a, b) => (a.recurrence as { date: string }).date.localeCompare((b.recurrence as { date: string }).date) || byStart(a, b));
 
   const blockRow = (b: (typeof data.blocks)[number]) => (
-    <li class="list-item" onClick={() => ui.open({ kind: 'block', block: b })}>
-      <div class="title">{b.title}</div>
-      <div class="muted small">
-        {recurrenceText(b.recurrence)} · {fmtMin(b.startMin)}–{fmtMin(b.endMin)} · {locName(b.locationId)}
-        {b.blocksScheduling === false ? ' · assignments allowed' : ''}
+    <li class="list-item settings-row" style={{ '--cat': TAG_STYLE[b.tag].color }} onClick={() => ui.open({ kind: 'block', block: b })}>
+      <span class="chip-icon"><Icon name={TAG_STYLE[b.tag].icon} /></span>
+      <div class="body">
+        <div class="title">{b.title}</div>
+        <div class="meta">
+          {recurrenceText(b.recurrence)} · {fmtMin(b.startMin)}–{fmtMin(b.endMin)} · {locName(b.locationId)}
+          {b.blocksScheduling === false ? ' · assignments allowed' : ''}
+        </div>
       </div>
+      <span class="chev"><Icon name="chevronRight" size={18} /></span>
     </li>
   );
 

@@ -1,6 +1,7 @@
 import { createContext, type ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
 import type { FixedBlock, Task } from '../core/types';
+import { Icon } from './icons';
 
 export type Sheet =
   | { kind: 'task'; task?: Task }
@@ -20,21 +21,23 @@ export function SheetFrame(p: {
   const { close } = useUI();
   return (
     <div class="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && close()}>
-      <div class="sheet">
+      <div class="sheet" role="dialog" aria-label={p.title}>
+        <div class="sheet-grabber" />
         <header class="sheet-head">
-          <button class="link" onClick={close}>
-            {p.onSave ? 'Cancel' : 'Close'}
+          <button class="icon-btn" aria-label={p.onSave ? 'Cancel' : 'Close'} onClick={close}>
+            <Icon name="close" />
           </button>
           <h2>{p.title}</h2>
-          {p.onSave ? (
-            <button class="link strong" onClick={p.onSave}>
-              {p.saveLabel ?? 'Save'}
-            </button>
-          ) : (
-            <span />
-          )}
+          <span />
         </header>
         <div class="sheet-body">{p.children}</div>
+        {p.onSave && (
+          <footer class="sheet-foot">
+            <button class="btn primary wide" onClick={p.onSave}>
+              {p.saveLabel ?? 'Save'}
+            </button>
+          </footer>
+        )}
       </div>
     </div>
   );
