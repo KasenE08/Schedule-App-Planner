@@ -140,3 +140,22 @@ describe('moving assignments by hand', () => {
     });
   });
 });
+
+describe('dropping next to a fixed time', () => {
+  it('dropped below a fixed time: starts after it, even if an earlier gap fits', () => {
+    // b would fit at 19:00 before the 20:00 gym; dropped below gym it waits for gym + the 30-min workout cutoff.
+    const d = actions.reorderDay(setup(), MON, ['a', 'b'], NOW, { id: 'b', after: T(MON, '21:00') });
+    expect(at(d, 'a')).toBe(`${MON} 17:45`);
+    expect(at(d, 'b')).toBe(`${MON} 21:30`);
+  });
+  it('dropped above it again (no anchor) goes back before it', () => {
+    let d = actions.reorderDay(setup(), MON, ['a', 'b'], NOW, { id: 'b', after: T(MON, '21:00') });
+    d = actions.reorderDay(d, MON, ['a', 'b'], NOW, { id: 'b' });
+    expect(at(d, 'b')).toBe(`${MON} 19:00`);
+  });
+  it('moving to a day or letting the app schedule it clears the anchor', () => {
+    const d = actions.reorderDay(setup(), MON, ['a', 'b'], NOW, { id: 'b', after: T(MON, '21:00') });
+    expect(actions.unpin(d, 'b', NOW).tasks.find((t) => t.id === 'b')!.pinAfter).toBeUndefined();
+    expect(actions.moveToDay(d, 'b', MON, NOW).tasks.find((t) => t.id === 'b')!.pinAfter).toBeUndefined();
+  });
+});

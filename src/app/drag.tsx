@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-/** A day in the week strip or month, or a slot in the day's list (0 = before the first assignment). */
-export type DropTarget = { day: string } | { slot: number };
+/** A day in the week strip or month, or a spot in the day's list: before entry `at` (the list's length = at the end). */
+export type DropTarget = { day: string } | { at: number };
 
 interface Drag {
   id: string;
@@ -22,14 +22,14 @@ function targetAt(x: number, y: number): DropTarget | null {
   if (day) return { day: day.dataset.dropDay! };
   const list = hit?.closest<HTMLElement>('[data-drop-list]');
   if (!list) return null;
-  // Anywhere in the day's list: the slot before the first card whose middle is below the finger.
-  // The top half of a card means "before it", the bottom half "after it"; the outline itself doesn't count.
-  const cards = Array.from(list.querySelectorAll<HTMLElement>('[data-drop-task]'));
-  const i = cards.findIndex((c) => {
+  // Anywhere in the day's list: the spot before the first card (assignment or fixed time) whose middle is below
+  // the finger. The top half of a card means "before it", the bottom half "after it"; the outline doesn't count.
+  const cards = Array.from(list.querySelectorAll<HTMLElement>('[data-drop-at]'));
+  const c = cards.find((c) => {
     const r = c.getBoundingClientRect();
     return y < r.top + r.height / 2;
   });
-  return { slot: i === -1 ? cards.length : i };
+  return { at: Number(c ? c.dataset.dropAt : list.dataset.dropList) };
 }
 
 /**
@@ -54,8 +54,14 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
     const tick = () => {
       const d = live.current;
       if (d) {
+        const before = scrollY;
         if (d.y > innerHeight - 110) scrollBy(0, 8);
         else if (d.y < 170 && !(d.over && 'day' in d.over)) scrollBy(0, -8);
+        // The page moved under a still finger: update where it would drop.
+        if (scrollY !== before) {
+          live.current = { ...d, over: targetAt(d.x, d.y) };
+          setDrag(live.current);
+        }
       }
       raf = requestAnimationFrame(tick);
     };

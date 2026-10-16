@@ -209,12 +209,19 @@ export const actions = {
   },
   /** Dragged onto a day: schedule it that day (or the next with room) and keep it there until undone. */
   moveToDay(d: AppData, id: string, day: DateKey, now: Ms): AppData {
-    return replan(patchTask(d, id, { pinDay: day, pinOrder: undefined }), now);
+    return replan(patchTask(d, id, { pinDay: day, pinOrder: undefined, pinAfter: undefined }), now);
   },
-  /** Reordered by hand: every listed task is kept on `day` in this order. */
-  reorderDay(d: AppData, day: DateKey, orderedIds: string[], now: Ms): AppData {
+  /**
+   * Reordered by hand: every listed task is kept on `day` in this order.
+   * `moved` is the dragged task; `after` is set when it was dropped below a fixed time (start after it ends).
+   */
+  reorderDay(d: AppData, day: DateKey, orderedIds: string[], now: Ms, moved?: { id: string; after?: Ms }): AppData {
     const pos = new Map(orderedIds.map((id, i) => [id, i]));
-    const tasks = d.tasks.map((t) => (pos.has(t.id) ? { ...t, pinDay: day, pinOrder: pos.get(t.id) } : t));
+    const tasks = d.tasks.map((t) => {
+      if (!pos.has(t.id)) return t;
+      const next = { ...t, pinDay: day, pinOrder: pos.get(t.id) };
+      return t.id === moved?.id ? { ...next, pinAfter: moved.after } : next;
+    });
     return replan({ ...d, tasks }, now);
   },
   /** Skip (or restore) the break before these tasks. */
@@ -224,7 +231,7 @@ export const actions = {
   },
   /** "Let the app schedule it": drops a hand move. */
   unpin(d: AppData, id: string, now: Ms): AppData {
-    return replan(patchTask(d, id, { pinDay: undefined, pinOrder: undefined }), now);
+    return replan(patchTask(d, id, { pinDay: undefined, pinOrder: undefined, pinAfter: undefined }), now);
   },
   /** Replaces a big task with parts spread over several days. */
   splitTask(d: AppData, task: Task, now: Ms): AppData {

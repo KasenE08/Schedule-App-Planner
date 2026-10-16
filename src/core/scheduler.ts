@@ -146,7 +146,7 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
   const startFor = (t: Task, st: State): Ms | null => {
     if (!ready(t, st)) return null;
     const pin = pinOf(t);
-    const from = pin ? Math.max(baseFrom(t, st), at(pin, 0)) : baseFrom(t, st);
+    const from = pin ? Math.max(baseFrom(t, st), at(pin, 0), t.pinAfter ?? 0) : baseFrom(t, st);
     const dur = t.estimateMin * MIN;
     // Falling behind: the first task may start exactly at the given minute; everything else snaps to the grid.
     const fit = (f: Ms) => {
