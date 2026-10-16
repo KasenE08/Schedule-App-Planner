@@ -8,14 +8,16 @@ import { TaskForm } from './TaskForm';
 import { TaskDetail } from './TaskDetail';
 import { BlockForm } from './BlockForm';
 import { NotifyGuide } from './NotifyGuide';
+import { Profile } from './Profile';
 import { useEffect } from 'preact/hooks';
 import { Icon, type IconName } from './icons';
 
-type Tab = 'today' | 'tasks' | 'settings';
+type Tab = 'today' | 'tasks' | 'settings' | 'profile';
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'today', label: 'Schedule', icon: 'calendar' },
   { id: 'tasks', label: 'Tasks', icon: 'tasks' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
+  { id: 'profile', label: 'Profile', icon: 'user' },
 ];
 
 export function App() {
@@ -44,6 +46,7 @@ export function App() {
         {tab === 'today' && <Today data={data} now={now} />}
         {tab === 'tasks' && <TaskList data={data} now={now} />}
         {tab === 'settings' && <Settings data={data} />}
+        {tab === 'profile' && <Profile data={data} now={now} />}
       </main>
       <nav class="tabbar">
         {TABS.slice(0, 2).map((t) => (

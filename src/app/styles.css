@@ -83,7 +83,7 @@ h3 { font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.12
 /* ---------- Bottom navigation ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
-  /* Five equal-weight columns keep the + dead center; Settings spans the right half. */
+  /* Two tabs, the +, two tabs: the + sits dead center. */
   display: grid; grid-template-columns: 1fr 1fr 76px 1fr 1fr; align-items: center;
   padding: 6px 8px calc(env(safe-area-inset-bottom) + 6px);
   background: rgba(255, 255, 255, 0.86); border-top: 1px solid var(--border);
@@ -95,7 +95,6 @@ h3 { font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.12
   transition: color var(--ease);
 }
 .tabbar button.on { color: var(--ink); font-weight: 650; }
-.tabbar .fab + button { grid-column: 4 / span 2; }
 .fab {
   justify-self: center; width: 52px; height: 52px; border-radius: 50%; border: 0;
   display: grid; place-items: center; background: var(--gradient); color: var(--on-accent);
@@ -382,3 +381,19 @@ input[type='checkbox']:checked::after { transform: translateX(20px); }
 .cat-chip.missing { --cat: var(--c-online-missing); }
 .cat-chip.other { --cat: var(--c-other); }
 .cat-chip.on { color: var(--text); border-color: var(--cat); background: color-mix(in srgb, var(--cat) 8%, #fff); }
+
+/* ---------- Profile ---------- */
+.profile-card {
+  display: flex; align-items: center; gap: 14px; padding: 16px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); margin-bottom: 22px;
+}
+.avatar { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: var(--surface); color: var(--muted); flex: 0 0 auto; }
+.profile-card h2 { font-size: 20px; }
+.profile-h { margin-bottom: 10px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat {
+  display: flex; flex-direction: column; gap: 2px; padding: 14px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-sm);
+}
+.stat strong { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
