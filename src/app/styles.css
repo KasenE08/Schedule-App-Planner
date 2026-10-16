@@ -83,7 +83,8 @@ h3 { font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.12
 /* ---------- Bottom navigation ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
-  display: grid; grid-template-columns: 1fr 1fr 76px 1fr; align-items: center;
+  /* Five equal-weight columns keep the + dead center; Settings spans the right half. */
+  display: grid; grid-template-columns: 1fr 1fr 76px 1fr 1fr; align-items: center;
   padding: 6px 8px calc(env(safe-area-inset-bottom) + 6px);
   background: rgba(255, 255, 255, 0.86); border-top: 1px solid var(--border);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -94,6 +95,7 @@ h3 { font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.12
   transition: color var(--ease);
 }
 .tabbar button.on { color: var(--ink); font-weight: 650; }
+.tabbar .fab + button { grid-column: 4 / span 2; }
 .fab {
   justify-self: center; width: 52px; height: 52px; border-radius: 50%; border: 0;
   display: grid; place-items: center; background: var(--gradient); color: var(--on-accent);
