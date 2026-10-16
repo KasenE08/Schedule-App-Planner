@@ -73,6 +73,8 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 
 ## Design system
 Dark navy with saturated (not neon, not purple) accents; the user found pastels too faint and purple. Tokens live at the top of `styles.css`: backgrounds `--bg #0B0F18`, `--bg-2 #101725`, `--surface #182233`, border `#29364D`, text `#F1F3FF` / `#9BA8C0`; blue `#4DA3FF`, green `#34D399`, orange `#FF8F5A`, pink `#FF6FAE`, amber `#FBBF24`, teal `#2DD4BF`, sky `#38BDF8` (accent). Primary actions use the teal→sky→blue gradient. Categories: Online blue, Online·Missing orange, Paper green, Paper·Missing pink, Other amber. The icon artwork is hue-shifted to teal in `make-icons.mjs`. Cards are pastel-tinted (`color-mix`) with an icon chip; radii 10/14/18/24. Bottom bar: Schedule, Tasks, center **+**, Settings. Sheets have a ✕ close and a full-width Save. Checkboxes render as switches; Tasks rows have round checkboxes that finish/reopen a task.
+- **Week/Month switch** on Schedule: Month shows `MonthGrid` (Sunday-first, whole weeks, up to 3 category-colored dots per day plus "+N"); tapping a day lists it below; month days are drop targets for drags.
+- **Task filters** (`taskFilters.ts`, tested): views All / Today (planned today or in progress) / Upcoming (next 7 days after today) / Late (late or unscheduled) / Completed, each with a count; category chips Online / Paper / Missing / Other narrow the list (any selected matches).
 
 ## Commands
 `npm run check` (typecheck + tests) · `npm run dev` · `npm run build`
@@ -125,6 +127,6 @@ Dark navy with saturated (not neon, not purple) accents; the user found pastels 
 - Fixed Falling behind ignoring seconds (6:10 instead of 6:08) and an unstyled load after rapid deploys (old assets now kept, service worker hardened).
 - 107 unit tests; 14-step end-to-end browser test of styles, auto order, reorder, skip break, move to later/earlier day, restore break, tonight rescue and falling behind, all passing.
 
-### UI redesign (on dev, awaiting approval)
+### UI redesign, month view and task filters (on dev, awaiting approval)
 - Full restyle to the pastel dark mood board and the new app icon; no behavior changes. Tasks screen gained To do / Completed tabs and round checkboxes (using the existing complete/reopen actions).
 - 108 unit tests and the 14-step end-to-end test pass; offline and two-touch drag checks pass.

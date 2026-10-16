@@ -7,6 +7,7 @@ import { actions } from './model';
 import { commit, getData } from './store';
 import { fixLateness, newlyLate } from './model';
 import { useDrag, type DropTarget } from './drag';
+import { MonthGrid, monthStart } from './MonthGrid';
 import { CATEGORY_ICONS, Icon, TAG_STYLE } from './icons';
 import { categoryRank } from '../core/priority';
 import { choose } from './dialog';
@@ -58,6 +59,8 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
   const today = dateKey(now);
   const [day, setDay] = useState<DateKey>(today);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [mode, setMode] = useState<'week' | 'month'>('week');
+  const [month, setMonth] = useState<DateKey>(monthStart(today));
   const ui = useUI();
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, weekOffset * 7 + i));
   const entries = entriesFor(data, day, now);
@@ -133,7 +136,28 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
 
       {data.push?.error && <div class="card small warn">Notifications: {data.push.error}</div>}
 
-      <div class="week">
+      <div class="segmented view-switch" role="tablist" aria-label="Calendar view">
+        <button role="tab" aria-selected={mode === 'week'} class={mode === 'week' ? 'on' : ''} onClick={() => setMode('week')}>
+          Week
+        </button>
+        <button
+          role="tab"
+          aria-selected={mode === 'month'}
+          class={mode === 'month' ? 'on' : ''}
+          onClick={() => {
+            setMonth(monthStart(day));
+            setMode('month');
+          }}
+        >
+          Month
+        </button>
+      </div>
+
+      {mode === 'month' && (
+        <MonthGrid data={data} month={month} setMonth={setMonth} selected={day} today={today} onSelect={setDay} isOver={dnd.isOver} />
+      )}
+
+      {mode === 'week' && <div class="week">
         <button class="icon-btn" aria-label="Previous week" disabled={weekOffset === 0} onClick={() => setWeekOffset(weekOffset - 1)}>
           <Icon name="chevronLeft" />
         </button>
@@ -151,7 +175,9 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
         <button class="icon-btn" aria-label="Next week" onClick={() => setWeekOffset(weekOffset + 1)}>
           <Icon name="chevronRight" />
         </button>
-      </div>
+      </div>}
+
+      {mode === 'month' && <h3 class="day-heading">{fmtDay(day, { weekday: 'long', month: 'long', day: 'numeric' })}</h3>}
 
       {school && day <= today && (
         <div class="card row arrival">
