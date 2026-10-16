@@ -5,7 +5,7 @@ import { occurrencesOn } from '../core/availability';
 import type { AppData } from './model';
 import { actions } from './model';
 import { commit, getData } from './store';
-import { fixLateness, newlyLate } from './model';
+import { fixLateness, moveInOrder, newlyLate } from './model';
 import { useDrag, type DropTarget } from './drag';
 import { MonthGrid, monthStart } from './MonthGrid';
 import { CATEGORY_ICONS, Icon, TAG_STYLE } from './icons';
@@ -66,6 +66,8 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
   const entries = entriesFor(data, day, now);
   const school = occurrencesOn(day, data.blocks, data.locations).find((o) => o.block.tag === 'school');
   const tasks = new Map(data.tasks.map((t) => [t.id, t]));
+  /** This day's assignments that can be reordered, top to bottom. */
+  const order = entries.filter((e): e is Extract<Entry, { kind: 'task' }> => e.kind === 'task' && e.task.status === 'todo').map((e) => e.task.id);
   const onDrop = async (id: string, target: DropTarget) => {
     const cur = getData();
     const n = Date.now();
@@ -79,13 +81,9 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
         notes.push(`No room on ${fmtDay(target.day)}, so it goes to ${fmtDue(slot.start)}.`);
       }
     } else {
-      // Reorder this day's list: the dragged one takes the target's spot, the rest shift up or down.
-      const ids = entries.filter((e): e is Extract<Entry, { kind: 'task' }> => e.kind === 'task' && e.task.status === 'todo').map((e) => e.task.id);
-      const from = ids.indexOf(id);
-      const to = ids.indexOf(target.task);
-      if (from === -1 || to === -1) return;
-      ids.splice(from, 1);
-      ids.splice(to, 0, id);
+      // Reorder this day's list: the dragged one goes into the outlined slot, the rest shift up or down.
+      const ids = moveInOrder(order, id, target.slot);
+      if (!ids) return;
       next = actions.reorderDay(cur, day, ids, n);
     }
     // If anything ends up late, offer the smallest help that gets it done on time.
@@ -111,6 +109,15 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
     commit(() => next);
   };
   const dnd = useDrag(onDrop);
+  // Where the dragged assignment would land: a translucent outline in that slot (none if it wouldn't move).
+  const over = dnd.drag?.over;
+  const slot = over && 'slot' in over && moveInOrder(order, dnd.drag!.id, over.slot) ? over.slot : null;
+  const outline = dnd.drag && (
+    <li class="entry drop-slot" style={{ minHeight: `${dnd.drag.h}px`, '--cat': category(tasks.get(dnd.drag.id)!).color }}>
+      <span class="title">{dnd.drag.title}</span>
+    </li>
+  );
+  const lastTodo = entries.findIndex((e) => e.kind === 'task' && e.task.id === order[order.length - 1]);
 
   const countFor = (k: DateKey) =>
     (data.plan?.items ?? []).filter((i) => dateKey(i.start) === k && tasks.get(i.taskId)?.status !== 'done').length;
@@ -211,8 +218,8 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
         <div class="card muted">No fixed schedule yet. Import your starter backup in Settings → Backup, or add times in Settings.</div>
       )}
 
-      <ol class="timeline">
-        {entries.map((e) => {
+      <ol class="timeline" data-drop-list>
+        {entries.map((e, i) => {
           if (e.kind === 'now') return <li class="now-line"><span>{fmtTime(e.start)}</span></li>;
           if (e.kind === 'reminder')
             return (
@@ -237,11 +244,19 @@ export function Today({ data, now }: { data: AppData; now: Ms }) {
               </li>
             );
           }
-          return <TaskEntry e={e} dnd={dnd} />;
+          const before = slot !== null && slot < order.length && e.task.id === order[slot];
+          const after = slot === order.length && i === lastTodo;
+          return (
+            <>
+              {before && outline}
+              <TaskEntry e={e} dnd={dnd} />
+              {after && outline}
+            </>
+          );
         })}
       </ol>
       {dnd.ghost}
-      {dnd.drag && <div class="drag-hint">Drop on a date to move it there, or on another assignment to reorder</div>}
+      {dnd.drag && <div class="drag-hint">Drop on a date to move it there, or between assignments to reorder</div>}
       {entries.filter((e) => e.kind === 'task').length === 0 && data.blocks.length > 0 && (
         <p class="muted center">No assignments scheduled this day.</p>
       )}
@@ -257,7 +272,7 @@ function TaskEntry({ e, dnd }: { e: Extract<Entry, { kind: 'task' }>; dnd: Retur
   const open = () => ui.open({ kind: 'detail', id: t.id });
   return (
     <li
-      class={`entry task ${t.status} ${e.late ? 'late' : ''} ${dnd.drag?.id === t.id ? 'dragging' : ''} ${dnd.isOver({ task: t.id }) ? 'drop-over' : ''}`}
+      class={`entry task ${t.status} ${e.late ? 'late' : ''} ${dnd.drag?.id === t.id ? 'dragging' : ''}`}
       style={{ '--cat': cat.color }}
       data-drop-task={t.status === 'todo' ? t.id : undefined}
       onPointerDown={drag?.onPointerDown}

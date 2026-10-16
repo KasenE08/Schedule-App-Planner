@@ -11,6 +11,7 @@ import { NotifyGuide } from './NotifyGuide';
 import { Profile } from './Profile';
 import { useEffect } from 'preact/hooks';
 import { Icon, type IconName } from './icons';
+import { watchUpdates } from './update';
 
 type Tab = 'today' | 'tasks' | 'settings' | 'profile';
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
@@ -26,6 +27,10 @@ export function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const ui = { open: setSheet, close: () => setSheet(null) };
+  // A new version waits for the Update button; ✕ hides it until the next open.
+  const [update, setUpdate] = useState<(() => void) | null>(null);
+  const [updating, setUpdating] = useState(false);
+  useEffect(() => watchUpdates((apply) => setUpdate(() => apply)), []);
 
   // Tapping a notification opens its task: via the URL when the app was closed, via a message when open.
   useEffect(() => {
@@ -65,6 +70,27 @@ export function App() {
           </button>
         ))}
       </nav>
+      {update && (
+        <div class="update-toast" role="status">
+          <div class="body">
+            <strong>New version ready</strong>
+            <span>Update now, or keep going: it waits.</span>
+          </div>
+          <button
+            class="btn primary small"
+            disabled={updating}
+            onClick={() => {
+              setUpdating(true);
+              update();
+            }}
+          >
+            {updating ? 'Updating…' : 'Update'}
+          </button>
+          <button class="icon-btn" aria-label="Later" onClick={() => setUpdate(null)}>
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+      )}
       {sheet?.kind === 'task' && <TaskForm data={data} task={sheet.task} />}
       {sheet?.kind === 'detail' && <TaskDetail data={data} id={sheet.id} />}
       {sheet?.kind === 'block' && <BlockForm data={data} block={sheet.block} once={sheet.once} />}

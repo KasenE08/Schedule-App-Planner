@@ -148,6 +148,18 @@ export function newlyLate(before: AppData, after: AppData): Task[] {
   return after.tasks.filter((t) => now.has(t.id) && !was.has(t.id));
 }
 
+/**
+ * A day's hand order after dropping `id` into slot `slot` (0 = before the first, ids.length = after the last).
+ * Null when it would land where it already is.
+ */
+export function moveInOrder(ids: string[], id: string, slot: number): string[] | null {
+  const from = ids.indexOf(id);
+  if (from === -1 || slot === from || slot === from + 1) return null;
+  const out = ids.filter((x) => x !== id);
+  out.splice(slot > from ? slot - 1 : slot, 0, id);
+  return out;
+}
+
 /** Tonight's extra time: from the normal day end until the latest allowed (default 12am–2am). */
 export function nightWindow(d: AppData, now: Ms): { start: Ms; end: Ms } {
   const today = dateKey(now);

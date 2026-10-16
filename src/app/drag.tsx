@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-export type DropTarget = { day: string } | { task: string };
+/** A day in the week strip or month, or a slot in the day's list (0 = before the first assignment). */
+export type DropTarget = { day: string } | { slot: number };
 
 interface Drag {
   id: string;
@@ -8,21 +9,31 @@ interface Drag {
   x: number;
   y: number;
   over: DropTarget | null;
+  /** Height of the card being dragged, for the drop outline. */
+  h: number;
 }
 
 const HOLD_MS = 450;
 const MOVE_TOLERANCE = 8;
 
-function targetAt(x: number, y: number, self: string): DropTarget | null {
-  const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-drop-day],[data-drop-task]');
-  if (!el) return null;
-  if (el.dataset.dropDay) return { day: el.dataset.dropDay };
-  if (el.dataset.dropTask && el.dataset.dropTask !== self) return { task: el.dataset.dropTask };
-  return null;
+function targetAt(x: number, y: number): DropTarget | null {
+  const hit = document.elementFromPoint(x, y);
+  const day = hit?.closest<HTMLElement>('[data-drop-day]');
+  if (day) return { day: day.dataset.dropDay! };
+  const list = hit?.closest<HTMLElement>('[data-drop-list]');
+  if (!list) return null;
+  // Anywhere in the day's list: the slot before the first card whose middle is below the finger.
+  // The top half of a card means "before it", the bottom half "after it"; the outline itself doesn't count.
+  const cards = Array.from(list.querySelectorAll<HTMLElement>('[data-drop-task]'));
+  const i = cards.findIndex((c) => {
+    const r = c.getBoundingClientRect();
+    return y < r.top + r.height / 2;
+  });
+  return { slot: i === -1 ? cards.length : i };
 }
 
 /**
- * Press and hold an item, then drag it onto a day in the week strip or onto another item.
+ * Press and hold an item, then drag it onto a day in the week strip or into a slot in the day's list.
  * Moving before the hold completes is treated as a normal scroll.
  */
 export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
@@ -58,6 +69,7 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
   const bind = (id: string, title: string) => ({
     onPointerDown(e: PointerEvent) {
       if ((e.target as HTMLElement).closest('button')) return;
+      const h = (e.currentTarget as HTMLElement).offsetHeight;
       // Only one drag at a time, from the first finger: a second touch can't grab another assignment.
       if (!e.isPrimary || activePointer.current !== null) return;
       const pid = e.pointerId;
@@ -67,7 +79,7 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
       let x = sx;
       let y = sy;
       const timer = setTimeout(() => {
-        live.current = { id, title, x, y, over: null };
+        live.current = { id, title, x, y, over: targetAt(x, y), h };
         setDrag(live.current);
       }, HOLD_MS);
       const move = (ev: PointerEvent) => {
@@ -78,7 +90,7 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
           if (Math.hypot(x - sx, y - sy) > MOVE_TOLERANCE) end();
           return;
         }
-        live.current = { ...live.current, x, y, over: targetAt(x, y, id) };
+        live.current = { ...live.current, x, y, over: targetAt(x, y) };
         setDrag(live.current);
       };
       const up = (ev: PointerEvent) => {
@@ -116,8 +128,7 @@ export function useDrag(onDrop: (id: string, target: DropTarget) => void) {
     },
   });
 
-  const isOver = (t: DropTarget) =>
-    !!drag?.over && ('day' in t ? 'day' in drag.over && drag.over.day === t.day : 'task' in drag.over && drag.over.task === t.task);
+  const isOver = (t: { day: string }) => !!drag?.over && 'day' in drag.over && drag.over.day === t.day;
 
   const ghost = drag && (
     <div class="drag-ghost" style={{ left: `${drag.x}px`, top: `${drag.y}px` }}>

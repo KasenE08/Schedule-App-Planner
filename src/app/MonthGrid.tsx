@@ -3,7 +3,6 @@ import { addDays, dateKey, daysInMonth, weekday } from '../core/time';
 import type { AppData } from './model';
 import { category, fmtDay, WEEKDAYS } from './format';
 import { Icon } from './icons';
-import type { DropTarget } from './drag';
 
 /** First day of the month containing `key`. */
 export const monthStart = (key: DateKey): DateKey => `${key.slice(0, 8)}01`;
@@ -29,7 +28,7 @@ export function MonthGrid(p: {
   selected: DateKey;
   today: DateKey;
   onSelect: (k: DateKey) => void;
-  isOver: (t: DropTarget) => boolean;
+  isOver: (t: { day: string }) => boolean;
 }) {
   const tasks = new Map(p.data.tasks.map((t) => [t.id, t]));
   // Category colors of each day's unfinished assignments, for the dots.
