@@ -1,8 +1,12 @@
-const CACHE = 'planner-mvanulwp';
-const FILES = ["./","./assets/index-TDPj2hS2.css","./assets/index-D7xJ-61_.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
+const CACHE = 'planner-mvbfcovj';
+const FILES = ["./","./assets/index-OQ_TXzDc.css","./assets/index-kNtWsXrR.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
 self.addEventListener('install', (e) => {
   // 'reload' skips the browser's HTTP cache so the saved copy matches this exact version.
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  // A new version waits until the app's Update button says go (never a surprise reload mid-edit).
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))));
+});
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'skip-waiting') self.skipWaiting();
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -12,13 +16,15 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
+  // Only this version's own cache: while a new version waits, the old one keeps serving its matching files.
+  const mine = caches.open(CACHE);
   if (e.request.mode === 'navigate') {
-    // Network first so updates arrive; cached copy when offline.
-    e.respondWith(fetch(e.request, { cache: 'no-cache' }).catch(() => caches.match('./')));
+    // This version's page, so page and assets always match; the network only if it isn't saved.
+    e.respondWith(mine.then((c) => c.match('./')).then((hit) => hit || fetch(e.request, { cache: 'no-cache' })));
     return;
   }
   // Saved copy first; otherwise fetch it and keep a copy (covers files from a page loaded just before an update).
-  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
+  e.respondWith(mine.then((c) => c.match(e.request)).then((hit) => hit || fetch(e.request).then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
     return res;
   })));
