@@ -42,15 +42,15 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   );
 }
 
-/** Icon and pastel tint for each kind of fixed time. */
+/** Icon for each kind of fixed time; fixed times stay neutral gray so only assignments carry color. */
 export const TAG_STYLE: Record<BlockTag, { icon: IconName; color: string }> = {
-  school: { icon: 'book', color: 'var(--blue)' },
-  work: { icon: 'briefcase', color: 'var(--orange)' },
-  gym: { icon: 'dumbbell', color: 'var(--green)' },
-  tutoring: { icon: 'cap', color: 'var(--amber)' },
-  activity: { icon: 'target', color: 'var(--pink)' },
-  chore: { icon: 'basket', color: 'var(--gray)' },
-  other: { icon: 'calendar', color: 'var(--teal)' },
+  school: { icon: 'book', color: 'var(--tag)' },
+  work: { icon: 'briefcase', color: 'var(--tag)' },
+  gym: { icon: 'dumbbell', color: 'var(--tag)' },
+  tutoring: { icon: 'cap', color: 'var(--tag)' },
+  activity: { icon: 'target', color: 'var(--tag)' },
+  chore: { icon: 'basket', color: 'var(--tag)' },
+  other: { icon: 'calendar', color: 'var(--tag)' },
 };
 
 /** Icon for each assignment category (same order as CATEGORIES). */
