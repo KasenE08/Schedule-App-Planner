@@ -1,5 +1,5 @@
-const CACHE = 'planner-mvanp4m0';
-const FILES = ["./","./assets/index-3KbWLreU.css","./assets/index-CnL2mOzZ.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
+const CACHE = 'planner-mvanulwp';
+const FILES = ["./","./assets/index-TDPj2hS2.css","./assets/index-D7xJ-61_.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
 self.addEventListener('install', (e) => {
   // 'reload' skips the browser's HTTP cache so the saved copy matches this exact version.
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
