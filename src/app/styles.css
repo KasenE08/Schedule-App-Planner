@@ -9,8 +9,8 @@
   --muted: #6b6b73;
   --faint: #8c8c94;
   --ink: #0a0a0b;
-  --tag: #52525b;
-  --warn: #b45309;
+  --tag: #a1a1aa;
+  --warn: #dc2626;
 
   --accent: var(--ink);
   --sky: var(--ink);
@@ -23,7 +23,7 @@
   --c-online-missing: #7c3aed;
   --c-paper: #16a34a;
   --c-paper-missing: #14532d;
-  --c-other: #dc2626;
+  --c-other: #eab308;
 
   --r-sm: 10px;
   --r-md: 14px;
@@ -112,10 +112,10 @@ h3 { font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.12
 .btn:active { transform: scale(0.97); }
 .btn.small { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 11px; }
 .btn.primary { background: var(--ink); color: var(--on-accent); border-color: var(--ink); font-weight: 650; }
-.btn.danger { color: #b91c1c; background: #fff; border-color: #f1d4d4; }
+.btn.danger { color: var(--warn); background: #fff; border-color: #f3d0d0; }
 .btn.wide { width: 100%; min-height: 50px; border-radius: var(--r-lg); font-size: 16px; margin-top: 16px; }
 .link { background: none; border: 0; color: var(--ink); padding: 4px; font-weight: 600; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
-.link.danger { color: #b91c1c; }
+.link.danger { color: var(--warn); }
 .icon-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
   background: none; border: 0; color: var(--muted); transition: background var(--ease), color var(--ease);
@@ -169,6 +169,11 @@ h3 { font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.12
   color: var(--cat); background: color-mix(in srgb, var(--cat) 10%, #fff);
 }
 .chip-icon.lg { width: 52px; height: 52px; border-radius: 16px; margin-bottom: 12px; }
+/* Fixed times stay quiet so assignments stand out. */
+.entry.block { background: #fafafa; border-color: #efeff1; box-shadow: none; }
+.entry.block .title { font-weight: 550; color: #3f3f46; }
+.entry.block .meta { color: var(--faint); }
+.entry.block .chip-icon { background: #f1f1f3; }
 .entry.block.soft { background: transparent; border-style: dashed; box-shadow: none; }
 .entry.task { box-shadow: inset 3px 0 0 var(--cat), var(--shadow-sm); cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .entry.task.inProgress { border-color: var(--cat); box-shadow: inset 3px 0 0 var(--cat), 0 0 0 1px var(--cat); }
