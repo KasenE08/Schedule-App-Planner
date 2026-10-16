@@ -1,5 +1,5 @@
-const CACHE = 'planner-mvbfcovj';
-const FILES = ["./","./assets/index-OQ_TXzDc.css","./assets/index-kNtWsXrR.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
+const CACHE = 'planner-mvbfo3qs';
+const FILES = ["./","./assets/index-OQ_TXzDc.css","./assets/index-YI0VIBzm.js","./manifest.webmanifest","./icon-180.png","./icon-192.png","./icon-512.png"];
 self.addEventListener('install', (e) => {
   // 'reload' skips the browser's HTTP cache so the saved copy matches this exact version.
   // A new version waits until the app's Update button says go (never a surprise reload mid-edit).
