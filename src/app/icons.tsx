@@ -45,12 +45,12 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 /** Icon and pastel tint for each kind of fixed time. */
 export const TAG_STYLE: Record<BlockTag, { icon: IconName; color: string }> = {
   school: { icon: 'book', color: 'var(--blue)' },
-  work: { icon: 'briefcase', color: 'var(--peach)' },
-  gym: { icon: 'dumbbell', color: 'var(--mint)' },
-  tutoring: { icon: 'cap', color: 'var(--lavender)' },
+  work: { icon: 'briefcase', color: 'var(--orange)' },
+  gym: { icon: 'dumbbell', color: 'var(--green)' },
+  tutoring: { icon: 'cap', color: 'var(--amber)' },
   activity: { icon: 'target', color: 'var(--pink)' },
   chore: { icon: 'basket', color: 'var(--gray)' },
-  other: { icon: 'calendar', color: 'var(--periwinkle)' },
+  other: { icon: 'calendar', color: 'var(--teal)' },
 };
 
 /** Icon for each assignment category (same order as CATEGORIES). */
