@@ -1,4 +1,4 @@
-// Renders scripts/icon.svg (white tile, black calendar, the five category colors) to the app's PNG icons.
+// Renders scripts/icon.svg (white tile, checkmark in the five category colors) to the app's PNG icons.
 // Needs Playwright with Chromium: node scripts/make-icons.mjs
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
