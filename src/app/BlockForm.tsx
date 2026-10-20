@@ -34,7 +34,12 @@ export function BlockForm({ data, block, once }: { data: AppData; block?: FixedB
   const [endDate, setEndDate] = useState(block?.endDate ?? '');
   const [skips, setSkips] = useState<string[]>(block?.skipDates ?? []);
   const [blocks, setBlocks] = useState(block?.blocksScheduling !== false);
-  const [steps, setSteps] = useState<ReminderStep[]>(block?.steps ?? []);
+  // Minutes and before/after are kept apart while editing (the number pad has no minus key); before saves as negative.
+  type StepRow = { mins: number; before: boolean; title: string };
+  const [steps, setSteps] = useState<StepRow[]>(
+    (block?.steps ?? []).map((x) => ({ mins: Math.abs(x.offsetMin), before: x.offsetMin < 0, title: x.title })),
+  );
+  const patchStep = (i: number, patch: Partial<StepRow>) => setSteps(steps.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const [error, setError] = useState('');
 
   const recurrence = (): Recurrence => {
@@ -65,7 +70,9 @@ export function BlockForm({ data, block, once }: { data: AppData; block?: FixedB
       endDate: kind !== 'once' && endDate ? endDate : undefined,
       skipDates: kind !== 'once' && skips.length ? skips : undefined,
       blocksScheduling: blocks ? undefined : false,
-      steps: steps.length ? steps.filter((x) => x.title.trim()) : undefined,
+      steps: steps.length
+        ? steps.filter((x) => x.title.trim()).map((x): ReminderStep => ({ offsetMin: x.before ? -x.mins : x.mins, title: x.title }))
+        : undefined,
     };
     commit((d, now) => actions.saveBlock(d, next, now));
     ui.close();
@@ -177,26 +184,31 @@ export function BlockForm({ data, block, once }: { data: AppData; block?: FixedB
         <input type="checkbox" checked={blocks} onChange={(e) => setBlocks(e.currentTarget.checked)} />
         No assignments during this
       </label>
-      <Field label="Reminders during this" hint="Minutes after it starts, e.g. laundry: 0 washer, 60 dryer, 120 take out.">
+      <Field label="Reminders" hint="Minutes before or after it starts, e.g. 30 before: leave now; laundry: 0, 60 and 120 after.">
         {steps.map((st, i) => (
           <div class="row step">
             <input
               type="number"
               inputMode="numeric"
-              value={st.offsetMin}
-              onInput={(e) => setSteps(steps.map((x, j) => (j === i ? { ...x, offsetMin: Number(e.currentTarget.value) } : x)))}
+              min="0"
+              value={st.mins}
+              onInput={(e) => patchStep(i, { mins: Math.abs(Math.round(Number(e.currentTarget.value) || 0)) })}
             />
+            <select value={st.before ? 'before' : 'after'} onChange={(e) => patchStep(i, { before: e.currentTarget.value === 'before' })}>
+              <option value="before">min before</option>
+              <option value="after">min after</option>
+            </select>
             <input
               value={st.title}
               placeholder="Reminder"
-              onInput={(e) => setSteps(steps.map((x, j) => (j === i ? { ...x, title: e.currentTarget.value } : x)))}
+              onInput={(e) => patchStep(i, { title: e.currentTarget.value })}
             />
             <button type="button" class="link" onClick={() => setSteps(steps.filter((_, j) => j !== i))}>
               ✕
             </button>
           </div>
         ))}
-        <button type="button" class="link" onClick={() => setSteps([...steps, { offsetMin: 0, title: '' }])}>
+        <button type="button" class="link" onClick={() => setSteps([...steps, { mins: 0, before: false, title: '' }])}>
           + Add reminder
         </button>
       </Field>

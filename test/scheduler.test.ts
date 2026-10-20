@@ -80,6 +80,13 @@ describe('scheduler: cutoffs', () => {
     expect(startOf(r, 'a')).toBe(`${TUE} 16:05`);
   });
 
+  it('a reminder can come before a fixed time starts (negative minutes)', () => {
+    const blocks = BLOCKS.map((b) => (b.id === 'gym' ? { ...b, steps: [{ offsetMin: -30, title: 'Pack gym bag' }] } : b));
+    const r = schedule(input(T(MON, '15:00'), [], { blocks }));
+    const gym = r.blockReminders.find((b) => b.title === 'Pack gym bag')!;
+    expect(fmt(gym.at).slice(11)).toBe('19:30');
+  });
+
   it('homework may run during laundry; laundry creates washer, dryer and take-out reminders', () => {
     const r = run(T(SUN, '15:00'), [task({ id: 'a', estimateMin: 30 })]);
     expect(startOf(r, 'a')).toBe(`${SUN} 15:10`);

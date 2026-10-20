@@ -290,7 +290,8 @@ input[type='checkbox']:checked::after { transform: translateX(20px); }
   font-size: 14px; color: var(--muted); transition: all var(--ease);
 }
 .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-.step input[type='number'] { width: 76px; flex: 0 0 auto; }
+.step input[type='number'] { width: 64px; flex: 0 0 auto; }
+.step select { width: auto; flex: 0 0 auto; }
 
 /* ---------- Sheets ---------- */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(10, 10, 11, 0.28); z-index: 10; display: flex; align-items: flex-end; }

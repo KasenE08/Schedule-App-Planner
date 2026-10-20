@@ -12,7 +12,7 @@ A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignment
 - Commit messages end with: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
 
 ## Scheduler rules (source of truth)
-**Fixed blocks** (pre-scheduled times and one-off fixed events) are never moved unless the user asks. All of them are editable in Settings, never hardcoded. Repeats: once, daily, weekly (chosen weekdays), monthly by date (clamps to month end), or monthly by pattern (e.g. 2nd Tuesday, last Friday). Individual dates can be skipped. A block can be non-blocking (reminders only).
+**Fixed blocks** (pre-scheduled times and one-off fixed events) are never moved unless the user asks. All of them are editable in Settings, never hardcoded. Repeats: once, daily, weekly (chosen weekdays), monthly by date (clamps to month end), or monthly by pattern (e.g. 2nd Tuesday, last Friday). Individual dates can be skipped. A block can be non-blocking (reminders only). Reminders can be minutes before or after it starts (before is stored as a negative offset; the form has a before/after picker because the iPhone number pad has no minus key).
 
 **Travel:** each location has a travel time from Home and back to Home. A block occupies `[start − travel there, end + travel back]`. Trips always start and end at Home.
 
@@ -140,4 +140,5 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 - Dragging shows a translucent outline where the assignment will land (before or after a card), instead of dropping onto a card.
 - New versions wait for an Update button in a banner instead of needing a restart.
 - Follow-up: the outline also goes between a fixed time and an assignment (both sides of a fixed time are spots), and a drop below a fixed time stays below it.
-- 122 unit tests; browser tests of the outline (including next to fixed times) (before/after, no flicker, lands in the slot), the full 14-step drag test, and the update flow (banner, ✕, comes back, Update, offline after, and upgrading from the previous live version).
+- Fixed-time reminders got a before/after picker (the number pad had no minus key, so "before" was impossible).
+- 123 unit tests; browser tests of the outline (including next to fixed times) (before/after, no flicker, lands in the slot), the full 14-step drag test, and the update flow (banner, ✕, comes back, Update, offline after, and upgrading from the previous live version).
