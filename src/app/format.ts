@@ -1,4 +1,5 @@
-import type { AssignmentType, BlockTag, DateKey, Ms, Recurrence, Task } from '../core/types';
+import type { AssignmentType, BlockTag, CutoffRule, DateKey, Ms, Recurrence, Task } from '../core/types';
+import { WHOLE_MORNING } from '../core/availability';
 import { at } from '../core/time';
 import { categoryRank } from '../core/priority';
 
@@ -103,3 +104,24 @@ export function recurrenceText(r: Recurrence): string {
 
 export const uid = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+
+const TAG_NOUNS: Record<BlockTag, string> = {
+  school: 'school',
+  work: 'a work shift',
+  gym: 'a workout',
+  tutoring: 'tutoring',
+  activity: 'an activity',
+  chore: 'a chore',
+  other: 'other events',
+};
+
+/** A cutoff rule as one plain sentence, e.g. "No schoolwork for 60 min after getting home from school". */
+export function ruleText(r: CutoffRule): string {
+  const who = r.appliesTo === 'schoolwork' ? 'schoolwork' : 'tasks';
+  const days = (d: number[] | undefined) => (d === undefined || d.length === 7 ? '' : d.length ? ` · ${weekdaysText(d)}` : ' · no days');
+  if (r.kind === 'afterBlock') return `No ${who} for ${r.minutes} min after getting home from ${TAG_NOUNS[r.tag]}`;
+  if (r.kind === 'window') return `No ${who} from ${fmtMin(r.startMin)} to ${fmtMin(r.endMin)}${days(r.weekdays)}`;
+  const target = `${r.from === 'leave' ? 'leaving for' : 'the start of'} ${TAG_NOUNS[r.tag]}`;
+  const span = r.minutes >= WHOLE_MORNING ? 'all morning' : `for ${r.minutes} min`;
+  return `No ${who} ${span} before ${target}${days(r.weekdays)}`;
+}

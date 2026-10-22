@@ -4,10 +4,10 @@ import { dateKey } from '../core/time';
 import { actions, exportBackup, parseBackup, type AppData } from './model';
 import { commit } from './store';
 import { Chips, useUI } from './ui';
-import { Icon, TAG_STYLE } from './icons';
+import { Icon, TAG_STYLE, type IconName } from './icons';
 import { useState } from 'preact/hooks';
 import { disablePush, enablePush, pushSupported, sendTest, uploadNow } from './push';
-import { fmtMin, inputToMin, minToInput, recurrenceText, TAG_LABELS, TYPE_LABELS, uid, WEEKDAYS } from './format';
+import { fmtMin, inputToMin, minToInput, recurrenceText, ruleText, TAG_LABELS, TYPE_LABELS, uid, WEEKDAYS } from './format';
 import { learnedRatio } from '../core/estimate';
 import type { AssignmentType } from '../core/types';
 
@@ -35,38 +35,86 @@ export function Settings({ data }: { data: AppData }) {
     </li>
   );
 
+  const [page, setPage] = useState<Page | null>(null);
+  const go = (p: Page | null) => {
+    setPage(p);
+    scrollTo(0, 0);
+  };
+  const add = (onClick: () => void) => <button class="link" onClick={onClick}>+ Add</button>;
+
+  if (page) {
+    const sub = (title: string, body: preact.ComponentChildren, action?: preact.ComponentChildren) => (
+      <div>
+        <button class="link back" onClick={() => go(null)}>
+          <Icon name="chevronLeft" size={18} /> Settings
+        </button>
+        <header class="top">
+          <h1>{title}</h1>
+          {action}
+        </header>
+        {body}
+      </div>
+    );
+    if (page === 'schedule')
+      return sub('Fixed schedule', <>
+        <ul class="list">{recurring.map(blockRow)}</ul>
+        {recurring.length === 0 && <p class="muted small">None yet.</p>}
+      </>, add(() => ui.open({ kind: 'block' })));
+    if (page === 'events')
+      return sub('One-time events', <>
+        <ul class="list">{events.map(blockRow)}</ul>
+        {events.length === 0 && <p class="muted small">No upcoming one-time events.</p>}
+      </>, add(() => ui.open({ kind: 'block', once: true })));
+    if (page === 'places') return sub('Places & travel', <Locations data={data} />);
+    if (page === 'rules') return sub('Cutoff rules', <Rules data={data} />);
+    if (page === 'pacing') return sub('Pacing & limits', <General settings={data.settings} />);
+    if (page === 'learning') return sub('Learning', <Learning data={data} />);
+    if (page === 'notify') return sub('Notifications', <Notifications data={data} />);
+    return sub('Backup', <Backup data={data} />);
+  }
+
+  const s = data.settings;
+  const learned = (Object.keys(TYPE_LABELS) as AssignmentType[]).filter((t) => learnedRatio(data.history, t).samples > 0).length;
+  const places = data.locations.filter((l) => l.id !== 'home').length;
+  const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const row = (p: Page, icon: IconName, title: string, sub: preact.ComponentChildren) => (
+    <button class="hub-row" onClick={() => go(p)}>
+      <span class="hub-icon"><Icon name={icon} size={18} /></span>
+      <span class="body">
+        <span class="title">{title}</span>
+        <span class="meta">{sub}</span>
+      </span>
+      <span class="chev"><Icon name="chevronRight" size={18} /></span>
+    </button>
+  );
   return (
     <div>
       <header class="top">
         <h1>Settings</h1>
       </header>
-
       <section>
-        <div class="section-head">
-          <h3>Fixed schedule</h3>
-          <button class="link" onClick={() => ui.open({ kind: 'block' })}>+ Add</button>
+        <h3>Your week</h3>
+        <div class="hub">
+          {row('schedule', 'calendar', 'Fixed schedule', recurring.length ? plural(recurring.length, 'repeating time') : 'None yet')}
+          {row('events', 'flag', 'One-time events', events.length ? `${events.length} coming up` : 'None coming up')}
+          {row('places', 'pin', 'Places & travel', places ? plural(places, 'place') : 'Only Home')}
         </div>
-        <ul class="list">{recurring.map(blockRow)}</ul>
-        {recurring.length === 0 && <p class="muted small">None yet.</p>}
       </section>
-
       <section>
-        <div class="section-head">
-          <h3>Fixed events</h3>
-          <button class="link" onClick={() => ui.open({ kind: 'block', once: true })}>+ Add</button>
+        <h3>How planning works</h3>
+        <div class="hub">
+          {row('rules', 'ban', 'Cutoff rules', plural(data.rules.length, 'rule'))}
+          {row('pacing', 'gauge', 'Pacing & limits', `${s.breakMin} min breaks · ${fmtMin(s.earliestStartMin)}–${fmtMin(s.dayEndMin)}`)}
+          {row('learning', 'sparkle', 'Learning', learned ? `${plural(learned, 'type')} timed` : 'Nothing timed yet')}
         </div>
-        <ul class="list">{events.map(blockRow)}</ul>
-        {events.length === 0 && <p class="muted small">No upcoming one-time events.</p>}
       </section>
-
-      <Locations data={data} />
-      <Rules data={data} />
-      <General settings={data.settings} />
-      <Learning data={data} />
-      <Notifications data={data} />
-
-      <Backup data={data} />
-
+      <section>
+        <h3>App</h3>
+        <div class="hub">
+          {row('notify', 'bell', 'Notifications', data.push ? (data.push.error ? <span class="warn">Needs attention</span> : <><span class="on-dot" />On</>) : 'Off')}
+          {row('backup', 'download', 'Backup', 'Export or import')}
+        </div>
+      </section>
       <p class="muted small center">
         Times follow your phone's timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone}).
       </p>
@@ -74,17 +122,14 @@ export function Settings({ data }: { data: AppData }) {
   );
 }
 
+type Page = 'schedule' | 'events' | 'places' | 'rules' | 'pacing' | 'learning' | 'notify' | 'backup';
+
 function Locations({ data }: { data: AppData }) {
   const set = (locations: Location[]) => commit((d, now) => actions.setLocations(d, locations, now));
   const patch = (id: string, p: Partial<Location>) => set(data.locations.map((l) => (l.id === id ? { ...l, ...p } : l)));
   return (
     <section>
-      <div class="section-head">
-        <h3>Places & travel from Home</h3>
-        <button class="link" onClick={() => set([...data.locations, { id: uid(), name: 'New place', fromHomeMin: 15, toHomeMin: 15 }])}>
-          + Add
-        </button>
-      </div>
+      <p class="muted small hint">Travel minutes from Home to each place and back.</p>
       <div class="card">
         <div class="loc-row muted small">
           <span>Place</span>
@@ -108,6 +153,9 @@ function Locations({ data }: { data: AppData }) {
             )}
           </div>
         ))}
+        <button class="link" onClick={() => set([...data.locations, { id: uid(), name: 'New place', fromHomeMin: 15, toHomeMin: 15 }])}>
+          + Add place
+        </button>
         <p class="muted small">Minutes. "There" = Home → place, "Back" = place → Home.</p>
       </div>
     </section>
@@ -117,7 +165,13 @@ function Locations({ data }: { data: AppData }) {
 const TAGS = Object.entries(TAG_LABELS) as [BlockTag, string][];
 
 function Rules({ data }: { data: AppData }) {
+  const [open, setOpen] = useState<string | null>(null);
   const set = (rules: CutoffRule[]) => commit((d, now) => actions.setRules(d, rules, now));
+  /** A new rule opens right away so it can be set up. */
+  const addRule = (r: CutoffRule) => {
+    set([...data.rules, r]);
+    setOpen(r.id);
+  };
   const patch = (id: string, p: Partial<CutoffRule>) =>
     set(data.rules.map((r) => (r.id === id ? ({ ...r, ...p } as CutoffRule) : r)));
   const num = (v: string) => Math.max(0, Number(v) || 0);
@@ -146,23 +200,13 @@ function Rules({ data }: { data: AppData }) {
 
   return (
     <section>
-      <div class="section-head">
-        <h3>Cutoff rules</h3>
-        <select class="link" value="" onChange={(e) => {
-          const k = e.currentTarget.value;
-          const id = uid();
-          if (k === 'after') set([...data.rules, { id, kind: 'afterBlock', tag: 'other', minutes: 30, appliesTo: 'all' }]);
-          if (k === 'before') set([...data.rules, { id, kind: 'beforeBlock', tag: 'other', minutes: 30, appliesTo: 'all' }]);
-          if (k === 'window') set([...data.rules, { id, kind: 'window', weekdays: [], startMin: 0, endMin: 60, appliesTo: 'all' }]);
-          e.currentTarget.value = '';
-        }}>
-          <option value="">+ Add</option>
-          <option value="after">After something</option>
-          <option value="before">Before something</option>
-          <option value="window">Time window</option>
-        </select>
-      </div>
-      {data.rules.map((r) => (
+      <p class="muted small hint">Times the app won't schedule work. Tap a rule to change it.</p>
+      {data.rules.map((r) => open !== r.id ? (
+        <button class="card rule-line" onClick={() => setOpen(r.id)}>
+          <span>{ruleText(r)}</span>
+          <span class="chev"><Icon name="chevronRight" size={18} /></span>
+        </button>
+      ) : (
         <div class="card rule">
           <div class="rule-text">
             No {scope(r)}
@@ -195,11 +239,27 @@ function Rules({ data }: { data: AppData }) {
           </div>
           {r.kind === 'window' && days(r, r.weekdays)}
           {r.kind === 'beforeBlock' && days(r, r.weekdays)}
-          <button class="link danger small" onClick={() => confirm('Delete this rule?') && set(data.rules.filter((x) => x.id !== r.id))}>
-            Delete rule
-          </button>
+          <div class="rule-actions">
+            <button class="link danger small" onClick={() => confirm('Delete this rule?') && set(data.rules.filter((x) => x.id !== r.id))}>
+              Delete rule
+            </button>
+            <button class="btn small primary" onClick={() => setOpen(null)}>Done</button>
+          </div>
         </div>
       ))}
+      <select class="add-rule" value="" onChange={(e) => {
+        const k = e.currentTarget.value;
+        const id = uid();
+        if (k === 'after') addRule({ id, kind: 'afterBlock', tag: 'other', minutes: 30, appliesTo: 'all' });
+        if (k === 'before') addRule({ id, kind: 'beforeBlock', tag: 'other', minutes: 30, appliesTo: 'all' });
+        if (k === 'window') addRule({ id, kind: 'window', weekdays: [], startMin: 0, endMin: 60, appliesTo: 'all' });
+        e.currentTarget.value = '';
+      }}>
+        <option value="">+ Add rule</option>
+        <option value="after">After something</option>
+        <option value="before">Before something</option>
+        <option value="window">Time window</option>
+      </select>
     </section>
   );
 }
@@ -216,7 +276,6 @@ function General({ settings }: { settings: S }) {
   );
   return (
     <section>
-      <h3>Pacing & limits</h3>
       <div class="card">
         <label class="set-row">
           <span>Earliest start</span>
@@ -247,7 +306,6 @@ function Learning({ data }: { data: AppData }) {
     .filter((r) => r.samples > 0);
   return (
     <section>
-      <h3>Learning</h3>
       <div class="card">
         <p class="muted small">
           Tap Start and Done on assignments and estimates adjust to how long you really take (after 3 of a type). Finishing early leaves free time.
@@ -296,7 +354,6 @@ function Backup({ data }: { data: AppData }) {
   };
   return (
     <section>
-      <h3>Backup</h3>
       <div class="card">
         <p class="muted small">Your data lives only on this phone. Export a backup now and then (save it to Files).</p>
         <div class="actions">
@@ -330,7 +387,6 @@ function Notifications({ data }: { data: AppData }) {
   const unsupported = pushSupported();
   return (
     <section>
-      <h3>Notifications</h3>
       <div class="card">
         {!p ? (
           <>
