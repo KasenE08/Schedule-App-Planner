@@ -120,12 +120,67 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
     return allowNight.has(t.id) ? nightFree[scope] : free[scope];
   };
 
-  /** A part may be placed only after every earlier part is done, started or placed. */
-  const finishedPart = (group: string, part: number) =>
-    input.tasks.some((x) => x.group === group && x.part === part && x.status !== 'todo');
   // Hand moves: a pin to a past day no longer applies.
   const today = dateKey(now);
   const pinOf = (t: Task) => (t.pinDay && t.pinDay >= today ? t.pinDay : undefined);
+  const spread = s.spreadWork !== false;
+  /** Spreading: the chosen day per task (filled in below, once the priority order is known). */
+  let target = new Map<string, string>();
+
+  /**
+   * Spreading: picks a day for each dated task, in priority order: the day with the least work so far
+   * (ties: the earlier day) that still has room to finish it before it's due. Missing work stays as soon as
+   * possible and pinned tasks stay on their day; both still count toward that day's work.
+   */
+  function targetDays(): Map<string, string> {
+    const load = new Map<string, number>();
+    const addLoad = (k: string, min: number) => load.set(k, (load.get(k) ?? 0) + min + s.breakMin);
+    for (const f of fixed) addLoad(dateKey(f.start), (f.end - f.start) / MIN);
+    const days = Array.from({ length: s.horizonDays }, (_, i) => addDays(today, i));
+    /** Free minutes on day k for t before `until`, and the longest single stretch. */
+    const room = (t: Task, k: string, until: Ms) => {
+      const lo = Math.max(at(k, 0), now);
+      const hi = Math.min(at(addDays(k, 1), 0), until);
+      let total = 0;
+      let longest = 0;
+      for (const iv of free[isSchoolwork(t) ? 'schoolwork' : 'all']) {
+        const len = Math.min(iv.end, hi) - Math.max(iv.start, lo);
+        if (len > 0) {
+          total += len;
+          longest = Math.max(longest, len);
+        }
+      }
+      return { total: total / MIN, longest: longest / MIN };
+    };
+    const out = new Map<string, string>();
+    const partDay = new Map<string, string>();
+    for (const t of input.tasks.filter((x) => x.status === 'todo').sort(byHand)) {
+      const pin = pinOf(t);
+      if (pin) {
+        addLoad(pin, t.estimateMin);
+        if (t.group) partDay.set(t.group, pin);
+        continue;
+      }
+      const until = t.due ?? Infinity;
+      const prev = t.group ? partDay.get(t.group) : undefined;
+      const first = prev ? addDays(prev, 1) : today;
+      const ok = days.filter((k) => {
+        if (k < first || at(k, 0) >= until) return false;
+        const r = room(t, k, until);
+        return r.longest >= t.estimateMin && r.total - (load.get(k) ?? 0) >= t.estimateMin;
+      });
+      if (!ok.length) continue;
+      const k = t.due === null ? ok[0] : ok.reduce((best, d) => ((load.get(d) ?? 0) < (load.get(best) ?? 0) ? d : best));
+      if (t.due !== null) out.set(t.id, k);
+      addLoad(k, t.estimateMin);
+      if (t.group) partDay.set(t.group, k);
+    }
+    return out;
+  }
+
+  /** A part may be placed only after every earlier part is done, started or placed. */
+  const finishedPart = (group: string, part: number) =>
+    input.tasks.some((x) => x.group === group && x.part === part && x.status !== 'todo');
   const pinnedBefore = (t: Task) =>
     pinOf(t) !== undefined && t.pinOrder !== undefined
       ? input.tasks.filter((x) => x.status === 'todo' && x.id !== t.id && pinOf(x) === pinOf(t) && x.pinOrder !== undefined && x.pinOrder < t.pinOrder!)
@@ -146,7 +201,17 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
   const startFor = (t: Task, st: State): Ms | null => {
     if (!ready(t, st)) return null;
     const pin = pinOf(t);
-    const from = pin ? Math.max(baseFrom(t, st), at(pin, 0), t.pinAfter ?? 0) : baseFrom(t, st);
+    const base = pin ? Math.max(baseFrom(t, st), at(pin, 0), t.pinAfter ?? 0) : baseFrom(t, st);
+    const dur = t.estimateMin * MIN;
+    // Spreading: try its chosen day first; if that would make it late, the earliest slot as usual.
+    const day = pin ? undefined : target.get(t.id);
+    if (day) {
+      const s0 = placeFrom(t, st, Math.max(base, at(day, 0)));
+      if (s0 !== null && (t.due === null || s0 + dur <= t.due)) return s0;
+    }
+    return placeFrom(t, st, base);
+  };
+  const placeFrom = (t: Task, st: State, from: Ms): Ms | null => {
     const dur = t.estimateMin * MIN;
     // Falling behind: the first task may start exactly at the given minute; everything else snaps to the grid.
     const fit = (f: Ms) => {
@@ -213,9 +278,16 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
         if (cs === null) continue;
         const next = after(queue[i], cs, st);
         if (next.floor + gap(next.prev, top) * MIN <= topStart && ready(top, next)) {
-          chosen = i;
-          chosenStart = cs;
-          break;
+          // Packing: the first by priority that fits. Spreading: the earliest of those, so days fill in time order.
+          if (!spread) {
+            chosen = i;
+            chosenStart = cs;
+            break;
+          }
+          if (chosen === topIdx || cs < chosenStart) {
+            chosen = i;
+            chosenStart = cs;
+          }
         }
       }
       const t = queue[chosen];
@@ -239,6 +311,7 @@ function run(input: ScheduleInput, allowNight: Set<string>): Run {
     if (pb) return 1;
     return comparePriority(a, b);
   };
+  if (spread) target = targetDays();
   const todo = input.tasks.filter((t) => t.status === 'todo').sort(byHand);
   const r = greedy(todo, state, true);
   return { items: [...fixed, ...r.items], warnings: r.warnings };

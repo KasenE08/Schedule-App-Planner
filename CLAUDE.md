@@ -29,7 +29,9 @@ A free iPhone PWA (hosted on GitHub Pages) that schedules the owner's assignment
 Online-Normal → Online-Missing → Paper-Normal → Paper-Missing → Other. A task in several categories takes its highest.
 Missing work has no due date and goes as soon as possible, **unless doing it first would make a dated assignment late**; then the normal assignment goes first.
 
-**Placement:** tasks go in time order from now, starting at the next 5-minute mark. The top-priority task takes its earliest fitting slot. A lower-priority task may fill an earlier gap only if that never delays the top task. A task never crosses a cutoff or block.
+**Spreading** (`spreadWork`, on by default, switch in Settings → Pacing & limits; the user wants the least work per day, done as early in the day as possible): before placing, each dated task, in priority order, is given the day with the least work so far (minutes plus a break each; ties go to the earlier day) that still has room to finish it before it's due (`targetDays`). It then takes the earliest fitting slot on or after that day; if that would make it late, the earliest slot as usual. Missing work stays as soon as possible and pinned tasks stay on their day (both count toward that day's work); split parts get increasing days. While spreading, gap filling picks the earliest-starting task that fits, so days fill in time order. Tests of the other rules run with it off (`PACKED` in `test/fixtures.ts`); `test/spread.test.ts` covers it.
+
+**Placement:** tasks go in time order from now, starting at the next 5-minute mark. The top-priority task takes its earliest fitting slot (on or after its spread day). A lower-priority task may fill an earlier gap only if that never delays the top task. A task never crosses a cutoff or block.
 
 **Pacing:** 30 min break between tasks. Two short tasks (≤ 20 min) pair with a 5 min break; the task after a pair gets 30 min. No break is needed between a task and a fixed block. Finishing early leaves free time (nothing is pulled earlier).
 
@@ -146,3 +148,8 @@ Missing work has no due date and goes as soon as possible, **unless doing it fir
 ### Settings hub (done)
 - Settings reorganized into a short grouped hub with a page per section (the user picked layout A of five mockups); cutoff rules read as sentences and open their editor on tap.
 - 124 unit tests; browser check of every page plus the 14-step drag test and the fixed-event outline test.
+
+### Spread work across days (done)
+- Assignments now spread over the days before they're due (least-loaded day first, earliest time that day) instead of packing the earliest days until the day end; switch in Pacing & limits, on by default.
+- On the user's real week with 8 sample assignments: before, Mon/Tue ran to 11:05pm and 11:30pm; after, six days, mostly done by late afternoon, nothing late.
+- 131 unit tests; the 14-step drag test, both outline tests pass (with spreading switched off through the new switch, since they stack a day on purpose).

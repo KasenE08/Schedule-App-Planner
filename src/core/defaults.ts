@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
   slotRoundMin: 5,
   notifyDays: 7,
   latestNightMin: 2 * 60,
+  spreadWork: true,
 };
 
 /** Generic starting rules; every value is editable in Settings. Other tasks bypass only the after-school hour. */

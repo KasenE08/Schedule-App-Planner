@@ -104,7 +104,7 @@ export function Settings({ data }: { data: AppData }) {
         <h3>How planning works</h3>
         <div class="hub">
           {row('rules', 'ban', 'Cutoff rules', plural(data.rules.length, 'rule'))}
-          {row('pacing', 'gauge', 'Pacing & limits', `${s.breakMin} min breaks · ${fmtMin(s.earliestStartMin)}–${fmtMin(s.dayEndMin)}`)}
+          {row('pacing', 'gauge', 'Pacing & limits', `${s.spreadWork !== false ? 'Spread out' : 'Packed'} · ${s.breakMin} min breaks · ${fmtMin(s.earliestStartMin)}–${fmtMin(s.dayEndMin)}`)}
           {row('learning', 'sparkle', 'Learning', learned ? `${plural(learned, 'type')} timed` : 'Nothing timed yet')}
         </div>
       </section>
@@ -266,7 +266,7 @@ function Rules({ data }: { data: AppData }) {
 
 function General({ settings }: { settings: S }) {
   const set = (p: Partial<S>) => commit((d, now) => actions.setSettings(d, { ...d.settings, ...p }, now));
-  const numRow = (label: string, key: keyof S, unit = 'min') => (
+  const numRow = (label: string, key: Exclude<keyof S, 'spreadWork'>, unit = 'min') => (
     <label class="set-row">
       <span>{label}</span>
       <span>
@@ -277,6 +277,15 @@ function General({ settings }: { settings: S }) {
   return (
     <section>
       <div class="card">
+        <label class="toggle">
+          <input type="checkbox" checked={settings.spreadWork !== false} onChange={(e) => set({ spreadWork: e.currentTarget.checked })} />
+          Spread work across days
+        </label>
+        <p class="muted small">
+          {settings.spreadWork !== false
+            ? 'Each assignment goes on the day with the least work that still finishes it on time, so days stay light and end early.'
+            : 'Off: assignments fill the earliest days first.'}
+        </p>
         <label class="set-row">
           <span>Earliest start</span>
           <input type="time" value={minToInput(settings.earliestStartMin)} onChange={(e) => set({ earliestStartMin: inputToMin(e.currentTarget.value) })} />

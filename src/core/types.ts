@@ -91,6 +91,8 @@ export interface Settings {
   notifyDays: number;
   /** Falling behind may run until this time after midnight (120 = 2am), only to stay on time. */
   latestNightMin: number;
+  /** Spread assignments over the days before they're due (least-loaded day first) instead of packing the earliest days. On unless false. */
+  spreadWork?: boolean;
 }
 
 export type Format = 'online' | 'paper';

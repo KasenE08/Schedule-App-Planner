@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { actions, emptyData, fixLateness, newlyLate, nightWindow, replan } from '../src/app/model';
-import { BLOCKS, LOCATIONS, MON, TUE, WED, THU, FRI, SUN, T, fmt, task } from './fixtures';
+import { BLOCKS, LOCATIONS, MON, TUE, WED, THU, FRI, SUN, T, fmt, task, PACKED } from './fixtures';
 
 const NOW = T(MON, '15:00');
 const setup = () => {
-  let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+  let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, NOW);
   d = actions.saveTask(d, task({ id: 'a', estimateMin: 45, due: T(TUE, '23:59') }), NOW);
   d = actions.saveTask(d, task({ id: 'b', estimateMin: 45, due: T(FRI, '23:59') }), NOW);
   return d;
@@ -29,7 +29,7 @@ describe('moving assignments by hand', () => {
   });
 
   it('dragging onto a full earlier day gives it first claim on that day; others shift', () => {
-    let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+    let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, NOW);
     d = actions.saveTask(d, task({ id: 'x1', estimateMin: 135, due: T(TUE, '23:59') }), NOW); // fills 5:45–8:00pm
     d = actions.saveTask(d, task({ id: 'x2', estimateMin: 145, due: T(TUE, '23:59') }), NOW); // fills 9:30–11:55pm
     d = actions.saveTask(d, task({ id: 'w', estimateMin: 60, due: T(WED, '23:59') }), NOW);
@@ -72,7 +72,7 @@ describe('moving assignments by hand', () => {
   });
 
   it('skipping the break lets a task start right after the one before it', () => {
-    let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+    let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, NOW);
     d = actions.saveTask(d, task({ id: 'x', estimateMin: 60, due: T(MON, '23:59') }), NOW);
     d = actions.saveTask(d, task({ id: 'y', estimateMin: 60, due: T(MON, '20:00') }), NOW);
     d = actions.reorderDay(d, MON, ['x', 'y'], NOW); // y now after x, needs the 30 min break
@@ -90,7 +90,7 @@ describe('moving assignments by hand', () => {
     const LATE_NOW = T(SUN, '23:30');
     const due = T(MON2, '01:00');
     const tonight = (withNight: boolean) => {
-      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, LATE_NOW);
+      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, LATE_NOW);
       if (withNight) d = { ...d, night: nightWindow(d, LATE_NOW) };
       d = actions.saveTask(d, task({ id: 'a', title: '10.3.4', estimateMin: 35, due, pinDay: SUN }), LATE_NOW);
       d = actions.saveTask(d, task({ id: 'b', title: '10.4.3', estimateMin: 35, due }), LATE_NOW);
@@ -123,14 +123,14 @@ describe('moving assignments by hand', () => {
     it('offers nothing when nothing is late, or when nothing can help', () => {
       const ok = actions.moveToDay(setup(), 'b', WED, NOW);
       expect(fixLateness(setup(), ok, 'b', NOW, false)).toBeNull();
-      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, NOW);
       d = actions.saveTask(d, task({ id: 'z', estimateMin: 60, due: T(MON, '16:00') }), NOW); // no free time before 4pm
       expect(fixLateness(d, d, 'z', NOW, true)).toBeNull();
     });
 
     it('ignores a different assignment that was already late before the move', () => {
       // The real case: moving "Activity List" to Thursday while "Counselor transcript" is already late today.
-      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+      let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, NOW);
       d = actions.saveTask(d, task({ id: 'transcript', title: 'Send counselor transcript', estimateMin: 30, due: T(MON, '16:00') }), NOW);
       d = actions.saveTask(d, task({ id: 'activity', title: 'Activity list descriptions', estimateMin: 45, due: T(FRI, '23:59') }), NOW);
       expect(d.plan!.items.find((i) => i.taskId === 'transcript')!.late).toBe(true); // already late

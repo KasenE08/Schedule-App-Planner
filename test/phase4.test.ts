@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { schedule } from '../src/core/scheduler';
 import { estimateMinutes, learnedRatio, splitMinutes, type DoneRecord } from '../src/core/estimate';
 import { actions, emptyData, nightWindow, replan } from '../src/app/model';
-import { BLOCKS, FRI, LOCATIONS, MON, TUE, WED, THU, SUN, T, fmt, input, task } from './fixtures';
+import { BLOCKS, FRI, LOCATIONS, MON, TUE, WED, THU, SUN, T, fmt, input, task, PACKED } from './fixtures';
 import type { Task } from '../src/core/types';
 
 const startOf = (r: { items: { taskId: string; start: number }[] }, id: string) => {
   const i = r.items.find((x) => x.taskId === id);
   return i ? fmt(i.start) : null;
 };
-const base = (now: number) => replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, now);
+const base = (now: number) => replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, now);
 const NIGHT = { start: T(MON, '00:00') + 86_400_000, end: T(TUE, '02:00') }; // Mon 12am–Tue 2am
 
 describe('falling behind', () => {

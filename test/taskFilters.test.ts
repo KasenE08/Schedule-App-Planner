@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { actions, emptyData, replan } from '../src/app/model';
 import { filterTasks } from '../src/app/taskFilters';
-import { BLOCKS, LOCATIONS, MON, TUE, FRI, T, task } from './fixtures';
+import { BLOCKS, LOCATIONS, MON, TUE, FRI, T, task, PACKED } from './fixtures';
 
 const NOW = T(MON, '15:00');
 const setup = () => {
-  let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, NOW);
+  let d = replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, NOW);
   d = actions.saveTask(d, task({ id: 'today', estimateMin: 30, formats: ['online'], due: T(TUE, '23:59') }), NOW);
   d = actions.saveTask(d, task({ id: 'late', estimateMin: 60, formats: ['paper'], due: T(MON, '16:00') }), NOW);
   d = actions.saveTask(d, task({ id: 'errand', estimateMin: 30, formats: [], due: T(FRI, '23:59') }), NOW);

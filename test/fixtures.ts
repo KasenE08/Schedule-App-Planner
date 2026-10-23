@@ -69,6 +69,9 @@ export function task(p: Partial<Task> & { estimateMin: number }): Task {
   };
 }
 
+/** The original "pack the earliest days" mode, used by the tests of breaks, pairing, priority and hand moves. */
+export const PACKED = { ...DEFAULT_SETTINGS, spreadWork: false };
+
 export function input(now: number, tasks: Task[], extra: Partial<ScheduleInput> = {}): ScheduleInput {
   return {
     now,
@@ -76,7 +79,7 @@ export function input(now: number, tasks: Task[], extra: Partial<ScheduleInput> 
     blocks: BLOCKS,
     locations: LOCATIONS,
     rules: DEFAULT_RULES,
-    settings: DEFAULT_SETTINGS,
+    settings: PACKED,
     ...extra,
   };
 }

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { actions, emptyData, exportBackup, normalize, parseBackup, refreshIfStale, replan } from '../src/app/model';
-import { BLOCKS, LOCATIONS, MON, TUE, T, task } from './fixtures';
+import { BLOCKS, LOCATIONS, MON, TUE, T, task, PACKED } from './fixtures';
 
-const base = () => replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS }, T(MON, '15:00'));
+const base = () => replan({ ...emptyData(), blocks: BLOCKS, locations: LOCATIONS, settings: PACKED }, T(MON, '15:00'));
 const startOf = (d: ReturnType<typeof base>, id: string) => d.plan!.items.find((i) => i.taskId === id)?.start;
 
 describe('app model', () => {
